@@ -195,7 +195,7 @@ function render() {
   else if (g.left === 0) adv = `✅ Tháng này đã bán ${nf(g.soldThisMonth, 2)} lượng, đủ đợt đề xuất (${nf(g.qty, 2)}). Đợt tiếp theo: tháng sau.`;
   else adv = `Đợt tháng này: <b>${nf(g.left, 2)} lượng</b> (≈ ${money(g.left * L.sjc_buy)})${g.soldThisMonth ? `, đã bán ${nf(g.soldThisMonth, 2)}` : ""}. Lý do: ${esc(g.why)}.`;
   $("#glideAdvice").innerHTML = adv;
-  $("#glideHead").innerHTML = `Hồ sơ đang áp dụng: <b>${esc(PROFILES[planCfg().profile]?.name || "")}</b> → giữ <b>${nf(g.gk.keep, 0)} lượng</b>, cần bán <b>${nf(g.remaining, 2)} lượng</b>. Đổi hồ sơ ở mục Định hướng phân bổ.`;
+  $("#glideHead").innerHTML = `Hồ sơ đang áp dụng: <b>${esc(PROFILES[planCfg().profile]?.name || "")}</b> → giữ <b>${nf(g.gk.keep, 0)} lượng</b>, cần bán <b>${nf(g.remaining, 2)} lượng</b>. Đổi hồ sơ bằng cách bấm thẻ ở mục Định hướng phân bổ.`;
 
   // Lịch bán dự kiến: tháng này theo tín hiệu hiện tại, các tháng sau theo nhịp cơ bản
   const sched = [];

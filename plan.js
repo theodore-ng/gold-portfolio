@@ -265,9 +265,6 @@ let simKey = "";
 function renderPlan(st) {
   const p = planCfg();
   const cur = currentMix(st), total = Object.values(cur).reduce((a, b) => a + b, 0), tgt = targetMix(total);
-  const sel = $("#planProfile");
-  if (!sel.options.length) sel.innerHTML = Object.entries(PROFILES).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join("");
-  sel.value = p.profile;
 
   const rows = CLASSES.map(([k, name, color, tip]) => {
     const d = tgt[k] - cur[k];
@@ -369,7 +366,6 @@ function bindPlan() {
   const form = $("#assumeForm");
   form.innerHTML = ASSUME_FIELDS.map(([k, l]) => `<label>${l}<input name="${k}" type="number" step="0.1"></label>`).join("") +
     `<button type="submit">Tính lại</button><button type="button" class="ghost" id="assumeReset">Về mặc định</button>`;
-  $("#planProfile").onchange = (e) => { planCfg().profile = e.target.value; save(); render(); };
   const pick = (e) => {
     const c = e.target.closest?.(".pcard[data-profile]");
     if (!c || (e.type === "keydown" && e.key !== "Enter")) return;
