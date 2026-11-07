@@ -2,7 +2,7 @@
 // KHÔNG BAO GIỜ đặt khóa service_role / secret vào đây.
 // Để trống => app chạy chế độ cục bộ (dữ liệu chỉ trong trình duyệt, không đăng nhập).
 window.QV_CONFIG = {
-  supabaseUrl: "",
-  supabaseKey: "",
+  supabaseUrl: "https://negkampmqbjzwmiwajhj.supabase.co",
+  supabaseKey: "sb_publishable_4HNZEhFDOJGyskuzWR--IA_lrSyxx_s",
   emailDomain: "quyvang.app", // tên đăng nhập "dongtrieu" => email dongtrieu@quyvang.app trong Supabase
 };
