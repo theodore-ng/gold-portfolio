@@ -35,7 +35,7 @@ function currentMix(st) {
 }
 
 function targetMix(total, profileKey) {
-  const p = planCfg(), prof = PROFILES[profileKey || p.profile] || PROFILES.stage1;
+  const p = planCfg(), key = profileKey || p.profile, prof = PROFILES[key] || PROFILES.stage1;
   if (!prof.w) {
     const gold = Math.min(S.settings.keep * P.latest.sjc_buy, total);
     const cash = Math.min(p.emergency, total - gold);
@@ -44,6 +44,16 @@ function targetMix(total, profileKey) {
   const w = prof.w, s = Object.values(w).reduce((a, b) => a + b, 0);
   const liquid = (total * w.liquid) / s, cash = Math.min(p.emergency, liquid);
   return { gold: (total * w.gold) / s, cash, dep: liquid - cash, bond: (total * w.bond) / s, equity: (total * w.equity) / s, sat: (total * w.sat) / s };
+}
+
+/** Số lượng vàng giữ lại theo hồ sơ đang chọn. Giai đoạn 1 dùng quy tắc cố định (Cài đặt → Giữ lại);
+    các hồ sơ khác = tỷ trọng vàng mục tiêu, làm tròn thành lượng nguyên (vàng miếng 1 lượng). */
+function goldKeep(st) {
+  const p = planCfg();
+  if (!PROFILES[p.profile]?.w) return { keep: S.settings.keep, exact: null, profile: p.profile };
+  const total = Object.values(currentMix(st)).reduce((a, b) => a + b, 0);
+  const exact = targetMix(total, p.profile).gold / P.latest.sjc_buy;
+  return { keep: Math.max(0, Math.round(exact)), exact, profile: p.profile };
 }
 
 /* ---------- Monte Carlo ---------- */
@@ -163,7 +173,10 @@ function renderPlan(st) {
     const d = tgt[k] - cur[k];
     let act = "—";
     if (Math.abs(d) >= 1) {
-      if (k === "gold") act = d < 0 ? `Bán ~${nf(-d / P.latest.sjc_buy, 1)} lượng (theo lộ trình)` : `Thêm ${money(d)}`;
+      if (k === "gold") {
+        const gk = goldKeep(st), sell = Math.max(st.gold - gk.keep, 0);
+        act = d < 0 ? `Bán ${nf(sell, sell % 1 ? 1 : 0)} lượng, giữ ${nf(gk.keep, 0)} (theo lộ trình)` : `Thêm ${money(d)}`;
+      }
       else act = d > 0 ? `Thêm ${money(d)}` : `Giảm ${money(-d)}`;
     }
     return `<tr><td><span class="dot" style="background:${css(color)}"></span>${name}</td>

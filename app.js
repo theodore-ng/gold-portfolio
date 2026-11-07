@@ -140,7 +140,8 @@ function valueOn(d) {
 function glide(st) {
   const g = S.settings, L = P.latest, prem = L.premium ?? 0, xau = L.xau ?? 0;
   const sold = st.sales.reduce((s, x) => s + x.luong, 0);
-  const remaining = Math.max(st.gold - g.keep, 0);
+  const gk = goldKeep(st);
+  const remaining = Math.max(st.gold - gk.keep, 0);
   const month = today().slice(0, 7);
   const soldThisMonth = st.sales.filter((x) => x.date.startsWith(month)).reduce((s, x) => s + x.luong, 0);
   const pause = [], extra = [];
@@ -153,7 +154,7 @@ function glide(st) {
   else if (extra.length) { qty = g.tranche + g.extra; why = extra.join(", ") + " → bán thêm 1 đợt"; }
   else { qty = g.tranche; why = `premium ${pct(prem)}, vàng TG $${nf(xau, 0)} trong vùng bình thường`; }
   qty = Math.min(qty, remaining);
-  return { sold, remaining, qty, why, soldThisMonth, left: Math.max(qty - soldThisMonth, 0) };
+  return { sold, remaining, qty, why, soldThisMonth, left: Math.max(qty - soldThisMonth, 0), gk };
 }
 
 /* ---------- hiển thị ---------- */
@@ -186,14 +187,17 @@ function render() {
   const g = glide(st), gs = S.settings;
   const plan = g.sold + g.remaining;
   $("#glideBar").style.width = (plan ? (g.sold / plan) * 100 : 100) + "%";
-  $("#glideProgress").textContent = `Đã bán ${nf(g.sold, 2)} / ${nf(plan, 2)} lượng · giữ lại ${nf(gs.keep, 1)} lượng phòng thủ · còn ${nf(g.remaining, 2)} lượng`;
+  const keepTxt = g.gk.exact == null
+    ? `giữ lại ${nf(g.gk.keep, 0)} lượng (Giai đoạn 1)`
+    : `giữ lại ${nf(g.gk.keep, 0)} lượng (hồ sơ ${PROFILES[g.gk.profile].name}: ≈ ${nf(g.gk.exact, 1)} lượng, làm tròn)`;
+  $("#glideProgress").textContent = `Đã bán ${nf(g.sold, 2)} / ${nf(plan, 2)} lượng · ${keepTxt} · còn ${nf(g.remaining, 2)} lượng`;
   let adv;
   if (g.remaining <= 0) adv = "✅ Đã hoàn tất lộ trình bán vàng.";
   else if (g.qty === 0) adv = `⏸ Tháng này: tạm dừng bán. ${g.why}.`;
   else if (g.left === 0) adv = `✅ Tháng này đã bán ${nf(g.soldThisMonth, 2)} lượng, đủ đợt đề xuất (${nf(g.qty, 2)}). Đợt tiếp theo: tháng sau.`;
   else adv = `Đợt tháng này: <b>${nf(g.left, 2)} lượng</b> (≈ ${money(g.left * L.sjc_buy)})${g.soldThisMonth ? `, đã bán ${nf(g.soldThisMonth, 2)}` : ""}. Lý do: ${esc(g.why)}.`;
   $("#glideAdvice").innerHTML = adv;
-  $("#glideRule").textContent = `Quy tắc: ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
+  $("#glideRule").textContent = `Số lượng giữ lại đi theo hồ sơ ở mục Định hướng phân bổ. Quy tắc: ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
 
   renderLots(st, L);
   renderDeps(st);
