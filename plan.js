@@ -113,49 +113,41 @@ function breakeven(A, B, years, p) {
 /* ---------- thẻ so sánh các hồ sơ ---------- */
 let profileCardKey = "";
 function renderProfileCards(cur, total, p) {
-  const keys = Object.keys(PROFILES), y = p.horizon, defl = Math.pow(1 + p.infl / 100, y);
-  const box = $("#profileCards");
-  box.innerHTML = keys.map((k) => `<div class="pcard" data-profile="${k}" role="button" tabindex="0">
-      <h3>${esc(PROFILES[k].name)}</h3>
-      <div class="pie"><canvas id="pie_${k}"></canvas></div>
-      <ul class="legend" id="leg_${k}"></ul>
-      <dl id="st_${k}"></dl>
+  const y = p.horizon, defl = Math.pow(1 + p.infl / 100, y);
+  // Mọi thẻ có cùng cấu trúc và cùng số dòng (tiêu đề, biểu đồ, 6 lớp tài sản, 7 chỉ số) để CSS subgrid căn thẳng hàng
+  const cards = [{ key: "cur", name: "Giữ nguyên (hiện tại)", mix: cur, base: true }]
+    .concat(Object.keys(PROFILES).map((k) => ({ key: k, name: PROFILES[k].name, mix: targetMix(total, k) })));
+  for (const c of cards) {
+    const sim = simulate(cur, c.mix, y, p, 600), f = c.base ? sim.A[sim.n] : sim.B[sim.n];
+    c.stats = [
+      [`Trung vị sau ${y} năm`, money(f[1])],
+      ["Tăng trưởng/năm", pct(Math.pow(f[1] / total, 1 / y) - 1)],
+      ["Theo sức mua hôm nay", money(f[1] / defl)],
+      ["Kịch bản xấu 5%", money(f[0])],
+      ["Sụt giảm tối đa", pct(c.base ? sim.mddA : sim.mddB)],
+      ["Thu nhập thụ động", money(passiveIncome(c.mix, p) / 12) + "/th"],
+      ["Hơn giữ nguyên", c.base ? "—" : nf(sim.beat * 100, 0) + "% kịch bản"],
+    ];
+  }
+  $("#profileCards").innerHTML = cards.map((c) => `
+    <div class="pcard${c.base ? " base" : ""}" ${c.base ? "" : `data-profile="${c.key}" role="button" tabindex="0"`}>
+      <h3>${esc(c.name)}</h3>
+      <div class="pie"><canvas id="pie_${c.key}"></canvas></div>
+      ${CLASSES.map(([k, name, color]) => {
+        const w = total ? (c.mix[k] / total) * 100 : 0;
+        return `<div class="li${w < 0.5 ? " zero" : ""}"><span class="dot" style="background:${css(color)}"></span><span>${name}</span><b>${w < 0.5 ? "—" : nf(w, 0) + "%"}</b></div>`;
+      }).join("")}
+      ${c.stats.map(([l, v], i) => `<div class="st${i === 0 ? " first" : ""}"><span>${l}</span><b>${v}</b></div>`).join("")}
     </div>`).join("");
-  for (const k of keys) {
-    const tgt = targetMix(total, k);
-    const sim = simulate(cur, tgt, y, p, 600), f = sim.B[sim.n];
-    const parts = CLASSES.filter(([c]) => tgt[c] >= 0.5);
-    $("#leg_" + k).innerHTML = parts.map(([c, name, color]) => `<li><span class="dot" style="background:${css(color)}"></span>${name}<b>${nf((tgt[c] / total) * 100, 0)}%</b></li>`).join("");
-    $("#st_" + k).innerHTML =
-      `<dt>Trung vị sau ${y} năm</dt><dd>${money(f[1])}</dd>` +
-      `<dt>Tăng trưởng/năm</dt><dd>${pct(Math.pow(f[1] / total, 1 / y) - 1)}</dd>` +
-      `<dt>Theo sức mua hôm nay</dt><dd>${money(f[1] / defl)}</dd>` +
-      `<dt>Kịch bản xấu 5%</dt><dd>${money(f[0])}</dd>` +
-      `<dt>Sụt giảm tối đa</dt><dd>${pct(sim.mddB)}</dd>` +
-      `<dt>Thu nhập thụ động</dt><dd>${money(passiveIncome(tgt, p) / 12)}/th</dd>` +
-      `<dt>Hơn giữ nguyên</dt><dd>${nf(sim.beat * 100, 0)}% kịch bản</dd>`;
-    if (charts["pie_" + k]) charts["pie_" + k].destroy();
-    charts["pie_" + k] = new Chart($("#pie_" + k), {
+  for (const c of cards) {
+    const parts = CLASSES.filter(([k]) => c.mix[k] >= 0.5);
+    if (charts["pie_" + c.key]) charts["pie_" + c.key].destroy();
+    charts["pie_" + c.key] = new Chart($("#pie_" + c.key), {
       type: "doughnut",
-      data: { labels: parts.map((x) => x[1]), datasets: [{ data: parts.map(([c]) => tgt[c]), backgroundColor: parts.map((x) => css(x[2])), borderWidth: 0 }] },
-      options: { cutout: "60%", maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.label}: ${money(c.parsed)} (${nf((c.parsed / total) * 100, 0)}%)` } } } },
+      data: { labels: parts.map((x) => x[1]), datasets: [{ data: parts.map(([k]) => c.mix[k]), backgroundColor: parts.map((x) => css(x[2])), borderWidth: 0 }] },
+      options: { cutout: "60%", maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (t) => `${t.label}: ${money(t.parsed)} (${nf((t.parsed / total) * 100, 0)}%)` } } } },
     });
   }
-  // thẻ "Giữ nguyên" để đối chiếu
-  const parts = CLASSES.filter(([c]) => cur[c] >= 0.5);
-  box.insertAdjacentHTML("afterbegin", `<div class="pcard base"><h3>Giữ nguyên (hiện tại)</h3><div class="pie"><canvas id="pie_cur"></canvas></div>
-    <ul class="legend">${parts.map(([c, name, color]) => `<li><span class="dot" style="background:${css(color)}"></span>${name}<b>${nf((cur[c] / total) * 100, 0)}%</b></li>`).join("")}</ul>
-    <dl id="st_cur"></dl></div>`);
-  const simA = simulate(cur, cur, y, p, 600), fa = simA.A[simA.n];
-  $("#st_cur").innerHTML = `<dt>Trung vị sau ${y} năm</dt><dd>${money(fa[1])}</dd><dt>Tăng trưởng/năm</dt><dd>${pct(Math.pow(fa[1] / total, 1 / y) - 1)}</dd>` +
-    `<dt>Theo sức mua hôm nay</dt><dd>${money(fa[1] / defl)}</dd><dt>Kịch bản xấu 5%</dt><dd>${money(fa[0])}</dd>` +
-    `<dt>Sụt giảm tối đa</dt><dd>${pct(simA.mddA)}</dd><dt>Thu nhập thụ động</dt><dd>${money(passiveIncome(cur, p) / 12)}/th</dd>`;
-  if (charts.pie_cur) charts.pie_cur.destroy();
-  charts.pie_cur = new Chart($("#pie_cur"), {
-    type: "doughnut",
-    data: { labels: parts.map((x) => x[1]), datasets: [{ data: parts.map(([c]) => cur[c]), backgroundColor: parts.map((x) => css(x[2])), borderWidth: 0 }] },
-    options: { cutout: "60%", maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } } },
-  });
 }
 
 /* ---------- hiển thị ---------- */

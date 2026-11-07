@@ -76,17 +76,23 @@ h3.sub { font-size: 14px; margin: 18px 0 8px; color: var(--muted); font-weight: 
 .chip { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }
 .chip.ok { background: var(--up); } .chip.warn { background: #c98a1c; } .chip.alert { background: var(--down); }
 .pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 8px; }
-.pcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; background: var(--bg); transition: border-color .15s; }
+/* Thẻ hồ sơ: subgrid, mọi thẻ chia chung hàng của lưới cha (1 tiêu đề + 1 biểu đồ + 6 lớp + 7 chỉ số = 15 hàng)
+   nên dòng cùng loại luôn thẳng hàng giữa các thẻ, kể cả khi chữ xuống dòng. */
+.pcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; background: var(--bg); transition: border-color .15s;
+  display: grid; grid-template-rows: subgrid; grid-row: span 15; row-gap: 3px; align-content: start;
+  grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .pcard:hover { border-color: var(--accent); }
-.pcard.on { border: 2px solid var(--accent); padding: 11px; }
+.pcard.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .pcard.base { cursor: default; border-style: dashed; }
-.pcard h3 { font-size: 14px; margin: 0 0 8px; min-height: 2.6em; }
-.pcard .pie { height: 130px; position: relative; margin-bottom: 8px; }
-.pcard .legend { list-style: none; padding: 0; margin: 0 0 8px; font-size: 12px; }
-.pcard .legend li { display: flex; align-items: center; }
-.pcard .legend b { margin-left: auto; font-variant-numeric: tabular-nums; }
-.pcard dl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin: 0; font-size: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
-.pcard dt { color: var(--muted); } .pcard dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pcard h3 { font-size: 14px; margin: 0; align-self: start; }
+.pcard .pie { height: 130px; position: relative; margin: 6px 0; }
+.pcard .li, .pcard .st { display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
+.pcard .li > span:nth-child(2), .pcard .st span { flex: 1; min-width: 0; }
+.pcard .li b, .pcard .st b { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.pcard .li .dot { flex: none; align-self: center; }
+.pcard .li.zero { color: var(--muted); opacity: .55; }
+.pcard .st span { color: var(--muted); }
+.pcard .st.first { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 5px; }
 details { margin-top: 12px; } summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 @media (max-width: 820px) {
   .kpis { grid-template-columns: 1fr 1fr; }
