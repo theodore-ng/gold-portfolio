@@ -80,7 +80,7 @@ h3.sub { font-size: 14px; margin: 18px 0 8px; color: var(--muted); font-weight: 
 .tile a { color: var(--accent); }
 .chip { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }
 .chip.ok { background: var(--up); } .chip.warn { background: #c98a1c; } .chip.alert { background: var(--down); }
-.pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.pcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 8px; }
 /* Thẻ hồ sơ: subgrid, mọi thẻ chia chung hàng của lưới cha (1 tiêu đề + 1 biểu đồ + 6 lớp + 7 chỉ số = 15 hàng)
    nên dòng cùng loại luôn thẳng hàng giữa các thẻ, kể cả khi chữ xuống dòng. */
 .pcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; background: var(--bg); transition: border-color .15s;
