@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quỹ Vàng</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 1l7 7-7 7-7-7z' fill='%23b8862b'/></svg>">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>Quỹ Vàng</h1>
+  <div id="priceStamp" class="muted">Đang tải giá…</div>
+</header>
+
+<main>
+  <!-- Lần đầu: thiết lập -->
+  <section id="setup" class="card" hidden>
+    <h2>Thiết lập danh mục</h2>
+    <p class="muted">Dữ liệu chỉ lưu trong trình duyệt này, không gửi lên máy chủ nào. Nhập file sao lưu nếu đã có.</p>
+    <form id="setupForm" class="grid">
+      <label>Số lượng vàng SJC (lượng)<input name="luong" type="number" step="0.01" min="0" required></label>
+      <label>Giá vốn (tr/lượng, bỏ trống nếu chưa rõ)<input name="cost" type="number" step="0.01" min="0"></label>
+      <label>Tiền mặt (tr VND)<input name="cash" type="number" step="0.01" min="0" value="0"></label>
+      <button type="submit">Bắt đầu</button>
+    </form>
+    <label class="filebtn">Nhập file sao lưu (.json)<input type="file" accept="application/json" data-import></label>
+  </section>
+
+  <div id="app" hidden>
+    <!-- Tổng quan -->
+    <section class="kpis">
+      <div class="card kpi"><span>Tổng tài sản</span><b id="kTotal"></b><small id="kDay"></small></div>
+      <div class="card kpi"><span>Lãi / lỗ tổng</span><b id="kPnl"></b><small id="kPnlNote"></small></div>
+      <div class="card kpi"><span>Vàng đang giữ</span><b id="kGold"></b><small id="kGoldVal"></small></div>
+      <div class="card kpi"><span>SJC mua vào / bán ra</span><b id="kSjc"></b><small id="kPrem"></small></div>
+    </section>
+
+    <!-- Lộ trình -->
+    <section class="card" id="glide">
+      <h2>Lộ trình bán vàng</h2>
+      <div class="progress"><div id="glideBar"></div></div>
+      <p id="glideProgress"></p>
+      <p id="glideAdvice" class="advice"></p>
+      <p class="muted small" id="glideRule"></p>
+    </section>
+
+    <!-- Biểu đồ -->
+    <section class="card">
+      <div class="row between">
+        <h2>Giá trị quỹ</h2>
+        <div class="seg" id="range">
+          <button data-r="90">3T</button><button data-r="180">6T</button><button data-r="365" class="on">1N</button><button data-r="0">Tất cả</button>
+        </div>
+      </div>
+      <div class="chartbox"><canvas id="chartFund"></canvas></div>
+      <p class="muted small">Nét đứt: giá SJC ước tính (trước khi có số liệu thật, ước tính theo giá thế giới × premium). Giả định đang giữ lượng vàng hiện có từ đầu biểu đồ đến ngày mua/bán đầu tiên.</p>
+    </section>
+
+    <section class="card">
+      <h2>Giá vàng (tr/lượng)</h2>
+      <div class="chartbox"><canvas id="chartGold"></canvas></div>
+    </section>
+
+    <!-- Hành động -->
+    <section class="grid2">
+      <form class="card" id="sellForm">
+        <h2>Ghi nhận bán vàng</h2>
+        <label>Ngày<input name="date" type="date" required></label>
+        <label>Số lượng (lượng)<input name="luong" type="number" step="0.01" min="0.01" required></label>
+        <label>Giá bán được (tr/lượng)<input name="price" type="number" step="0.01" min="0" required></label>
+        <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: bán tại SJC Q1"></label>
+        <p class="muted small" id="sellPreview"></p>
+        <button type="submit">Ghi nhận bán</button>
+      </form>
+
+      <form class="card" id="depForm">
+        <h2>Gửi tiết kiệm từ tiền mặt</h2>
+        <label>Ngân hàng<input name="bank" required maxlength="40" placeholder="VD: Vietcombank"></label>
+        <label>Số tiền (tr VND)<input name="amount" type="number" step="0.01" min="0.01" required></label>
+        <label>Lãi suất (%/năm)<input name="rate" type="number" step="0.01" min="0" value="8.2" required></label>
+        <label>Kỳ hạn (tháng)<select name="months"><option>1</option><option selected>3</option><option>6</option><option>12</option><option>24</option></select></label>
+        <label>Ngày gửi<input name="date" type="date" required></label>
+        <p class="muted small">Bảo hiểm tiền gửi tối đa 125 tr/người/ngân hàng.</p>
+        <button type="submit">Gửi tiết kiệm</button>
+      </form>
+    </section>
+
+    <!-- Danh mục -->
+    <section class="card">
+      <h2>Phân bổ hiện tại</h2>
+      <div class="row wrap">
+        <div class="donut"><canvas id="chartAlloc"></canvas></div>
+        <table id="allocTable"></table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Lô vàng</h2>
+      <p class="muted small">Bán theo thứ tự lô từ trên xuống (FIFO). Sửa giá vốn trực tiếp trong bảng.</p>
+      <div class="tablewrap"><table id="lotsTable"></table></div>
+      <details><summary>Thêm lô vàng (mua thêm)</summary>
+        <form id="lotForm" class="grid">
+          <label>Ngày mua<input name="date" type="date"></label>
+          <label>Số lượng (lượng)<input name="luong" type="number" step="0.01" min="0.01" required></label>
+          <label>Giá vốn (tr/lượng)<input name="cost" type="number" step="0.01" min="0"></label>
+          <label>Ghi chú<input name="note" maxlength="120"></label>
+          <label class="check"><input name="fromCash" type="checkbox"> Trừ vào tiền mặt</label>
+          <button type="submit">Thêm lô</button>
+        </form>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Tiết kiệm</h2>
+      <div class="tablewrap"><table id="depTable"></table></div>
+    </section>
+
+    <section class="card">
+      <h2>Tiền mặt</h2>
+      <p>Hiện có: <b id="cashNow"></b></p>
+      <form id="cashForm" class="grid">
+        <label>Ngày<input name="date" type="date" required></label>
+        <label>Số tiền (tr VND, âm = chi ra)<input name="amount" type="number" step="0.01" required></label>
+        <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: thu nhập tháng 11"></label>
+        <button type="submit">Ghi nhận</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Lịch sử giao dịch</h2>
+      <div class="tablewrap"><table id="txTable"></table></div>
+    </section>
+
+    <section class="card">
+      <h2>Dữ liệu &amp; cài đặt</h2>
+      <p class="muted small">Dữ liệu nằm trong trình duyệt này. Xóa dữ liệu trình duyệt là mất, nên hãy xuất file sao lưu sau mỗi lần cập nhật.</p>
+      <div class="row wrap gap">
+        <button id="btnExport" type="button">Xuất sao lưu (.json)</button>
+        <label class="filebtn">Nhập sao lưu<input type="file" accept="application/json" data-import></label>
+        <button id="btnReset" type="button" class="danger">Xóa toàn bộ dữ liệu</button>
+      </div>
+      <details><summary>Quy tắc lộ trình</summary>
+        <form id="setForm" class="grid">
+          <label>Giữ lại (lượng)<input name="keep" type="number" step="0.5" min="0"></label>
+          <label>Mỗi đợt (lượng)<input name="tranche" type="number" step="0.5" min="0"></label>
+          <label>Bán thêm (lượng)<input name="extra" type="number" step="0.5" min="0"></label>
+          <label>Premium cao (%)<input name="premHigh" type="number" step="0.5"></label>
+          <label>Premium thấp (%)<input name="premLow" type="number" step="0.5"></label>
+          <label>Vàng TG xác nhận đáy ($)<input name="xauConfirm" type="number"></label>
+          <label>Vàng TG hỗ trợ ($)<input name="xauSupport" type="number"></label>
+          <button type="submit">Lưu quy tắc</button>
+        </form>
+      </details>
+    </section>
+
+    <p class="muted small center">Công cụ theo dõi cá nhân, không phải khuyến nghị đầu tư. Giá: PNJ (trực tiếp) và Yahoo Finance (cập nhật vài lần/ngày).</p>
+  </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+name: Cập nhật giá vàng
+
+on:
+  schedule:
+    - cron: "15 2,4,7,10 * * *"   # 09:15, 11:15, 14:15, 17:15 giờ Việt Nam
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r scripts/requirements.txt
+      - run: python scripts/update_prices.py
+      - name: Commit giá mới
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/prices.json
+          if git diff --staged --quiet; then echo "Không có thay đổi"; exit 0; fi
+          git commit -m "Cập nhật giá $(TZ=Asia/Ho_Chi_Minh date +'%Y-%m-%d %H:%M')"
+          git push
