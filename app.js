@@ -197,6 +197,21 @@ function render() {
   else if (g.left === 0) adv = `✅ Tháng này đã bán ${nf(g.soldThisMonth, 2)} lượng, đủ đợt đề xuất (${nf(g.qty, 2)}). Đợt tiếp theo: tháng sau.`;
   else adv = `Đợt tháng này: <b>${nf(g.left, 2)} lượng</b> (≈ ${money(g.left * L.sjc_buy)})${g.soldThisMonth ? `, đã bán ${nf(g.soldThisMonth, 2)}` : ""}. Lý do: ${esc(g.why)}.`;
   $("#glideAdvice").innerHTML = adv;
+  $("#glideHead").innerHTML = `Hồ sơ đang áp dụng: <b>${esc(PROFILES[planCfg().profile]?.name || "")}</b> → giữ <b>${nf(g.gk.keep, 0)} lượng</b>, cần bán <b>${nf(g.remaining, 2)} lượng</b>. Đổi hồ sơ ở mục Định hướng phân bổ.`;
+
+  // Lịch bán dự kiến: tháng này theo tín hiệu hiện tại, các tháng sau theo nhịp cơ bản
+  const sched = [];
+  let rem = g.remaining, [yy, mm] = today().split("-").map(Number);
+  for (let i = 0; rem > 1e-9 && i < 36; i++) {
+    const q = i === 0 ? (g.qty === 0 ? 0 : Math.min(g.left, rem)) : Math.min(gs.tranche, rem);
+    sched.push({ label: `${String(mm).padStart(2, "0")}/${yy}`, q, now: i === 0, pause: i === 0 && g.qty === 0 });
+    rem -= q;
+    if (++mm > 12) { mm = 1; yy++; }
+    if (i > 0 && gs.tranche <= 0) break;
+  }
+  $("#glideSchedule").innerHTML = g.remaining <= 0 ? "" :
+    `<div class="chips">${sched.map((s) => `<span class="sch${s.now ? " now" : ""}${s.pause ? " pause" : ""}"><small>${s.label}</small><b>${s.pause ? "dừng" : nf(s.q, s.q % 1 ? 1 : 0) + " lượng"}</b></span>`).join("")}</div>
+     <p class="muted small">Dự kiến hoàn tất: <b>${sched.at(-1)?.label || "—"}</b> (${sched.length} tháng). Các tháng sau tính theo nhịp cơ bản ${gs.tranche} lượng/tháng; khi đến kỳ sẽ tăng/giảm theo premium và giá vàng.</p>`;
   $("#glideRule").textContent = `Số lượng giữ lại đi theo hồ sơ ở mục Định hướng phân bổ. Quy tắc: ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
 
   renderLots(st, L);
