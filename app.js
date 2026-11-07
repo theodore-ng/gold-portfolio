@@ -5,7 +5,7 @@
 const KEY = "quyvang_v1";
 const PRICE_URLS = ["https://raw.githubusercontent.com/theodore-ng/gold-portfolio/main/data/prices.json", "data/prices.json"];
 const PNJ_URL = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00";
-const DEFAULT_SETTINGS = { keep: 3, tranche: 1, extra: 1, premHigh: 10, premLow: 3, xauConfirm: 4450, xauSupport: 3900 };
+const DEFAULT_SETTINGS = { minKeep: 0, tranche: 1, extra: 1, premHigh: 10, premLow: 3, xauConfirm: 4450, xauSupport: 3900 };
 
 let S = null;          // trạng thái người dùng
 let P = null;          // giá: {updated, latest, history[]}
@@ -187,9 +187,7 @@ function render() {
   const g = glide(st), gs = S.settings;
   const plan = g.sold + g.remaining;
   $("#glideBar").style.width = (plan ? (g.sold / plan) * 100 : 100) + "%";
-  const keepTxt = g.gk.exact == null
-    ? `giữ lại ${nf(g.gk.keep, 0)} lượng (Giai đoạn 1)`
-    : `giữ lại ${nf(g.gk.keep, 0)} lượng (hồ sơ ${PROFILES[g.gk.profile].name}: ≈ ${nf(g.gk.exact, 1)} lượng, làm tròn)`;
+  const keepTxt = `giữ lại ${nf(g.gk.keep, 0)} lượng (${g.gk.floored ? `mức tối thiểu trong cài đặt; hồ sơ tính ≈ ${nf(g.gk.exact, 1)}` : `hồ sơ ${PROFILES[g.gk.profile].name}: ≈ ${nf(g.gk.exact, 1)} lượng, làm tròn`})`;
   $("#glideProgress").textContent = `Đã bán ${nf(g.sold, 2)} / ${nf(plan, 2)} lượng · ${keepTxt} · còn ${nf(g.remaining, 2)} lượng`;
   let adv;
   if (g.remaining <= 0) adv = "✅ Đã hoàn tất lộ trình bán vàng.";

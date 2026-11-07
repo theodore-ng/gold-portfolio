@@ -3,7 +3,7 @@
    Dùng chung các hàm tiện ích trong app.js. Đơn vị: triệu VND. */
 
 const PROFILES = {
-  stage1: { name: "Giai đoạn 1 – ưu tiên tiết kiệm (hiện tại)" },
+  rec: { name: "Đề xuất theo thị trường", dynamic: true },
   conservative: { name: "Thận trọng", w: { liquid: 25, bond: 25, equity: 20, gold: 25, sat: 5 } },
   balanced: { name: "Cân bằng", w: { liquid: 15, bond: 20, equity: 35, gold: 20, sat: 10 } },
   growth: { name: "Tăng trưởng", w: { liquid: 10, bond: 10, equity: 45, gold: 15, sat: 15 } },
@@ -17,7 +17,7 @@ const CLASSES = [
   ["sat", "Vệ tinh (tự giao dịch)", "--sat", "Chỉ sau 2–3 tháng paper trading. Chủ đề đang xem xét: đầu tư công, tiền số (tối đa vài %)."],
 ];
 const DEFAULT_PLAN = {
-  profile: "stage1", emergency: 60, horizon: 5,
+  profile: "rec", emergency: 60, horizon: 5,
   rGold: 6, vGold: 17, premTarget: 3, rDep: 7.5, rCash: 0.5, rBond: 6.5, vBond: 3, rEq: 11, vEq: 20, divEq: 2, rSat: 11, vSat: 30, infl: 4,
 };
 const ASSUME_FIELDS = [
@@ -28,32 +28,64 @@ const ASSUME_FIELDS = [
   ["vEq", "Cổ phiếu: biến động (%)"], ["divEq", "Cổ tức tiền mặt (%)"], ["rSat", "Vệ tinh (%)"], ["vSat", "Vệ tinh: biến động (%)"],
 ];
 
-const planCfg = () => (S.settings.plan = { ...DEFAULT_PLAN, ...(S.settings.plan || {}) });
+const planCfg = () => {
+  const p = (S.settings.plan = { ...DEFAULT_PLAN, ...(S.settings.plan || {}) });
+  if (!PROFILES[p.profile]) p.profile = "rec"; // dữ liệu cũ: "stage1" -> hồ sơ đề xuất
+  return p;
+};
+
+/* ---------- Hồ sơ đề xuất: tỷ trọng chiến lược (Cân bằng) + điều chỉnh chiến thuật theo số liệu hiện tại ---------- */
+function recommendation() {
+  const w = { ...PROFILES.balanced.w }, reasons = [];
+  const move = (from, to, pts, text) => {
+    const take = Math.min(pts, w[from]);
+    if (take <= 0) return;
+    w[from] -= take; w[to] += take;
+    reasons.push({ text, delta: `${LABEL[from]} −${take} → ${LABEL[to]} +${take} điểm %` });
+  };
+  const dep = vn("deposit")?.value, cpi = vn("cpiYoy")?.value;
+  if (dep != null && cpi != null) {
+    const real = dep - cpi;
+    if (real >= 2.5) move("equity", "liquid", real >= 4 ? 15 : 10, `Lãi tiết kiệm ${nf(dep, 1)}% trừ lạm phát ${nf(cpi, 2)}% = lãi thực ${pct(real / 100)}: cao, gửi tiết kiệm hấp dẫn so với rủi ro cổ phiếu.`);
+    else if (real < 0) move("liquid", "equity", 5, `Lãi thực âm (${pct(real / 100)}): giữ tiền làm mất sức mua, nghiêng sang cổ phiếu.`);
+    if (cpi >= 4.5 && w.gold < 15) move("liquid", "gold", 15 - w.gold, `Lạm phát ${nf(cpi, 2)}% cao: giữ tối thiểu 15% vàng để phòng thủ.`);
+  }
+  if (M) {
+    const c = recessionChecks(), score = c.reduce((s, x) => s + (x.level === "alert" ? 2 : x.level === "warn" ? 1 : 0), 0);
+    if (score >= 6) { move("equity", "bond", 5, `Rủi ro suy thoái cao (${score} điểm): giảm cổ phiếu.`); move("sat", "gold", 5, "Rủi ro suy thoái cao: giảm giao dịch vệ tinh, tăng phòng thủ."); }
+    else if (score >= 3) move("sat", "bond", 5, `Rủi ro suy thoái trung bình (${score} điểm): thu nhỏ phần vệ tinh, tăng quỹ trái phiếu.`);
+    const vni = M.markets?.vnindex;
+    if (vni?.vsMa200 != null && vni.vsMa200 < 0) move("equity", "bond", 5, `VN-Index dưới MA200 (${pct(vni.vsMa200)}): xu hướng chưa thuận, giải ngân cổ phiếu chậm lại.`);
+  }
+  const prem = P.latest.premium;
+  if (prem != null && prem > 0.1) {
+    const floor = cpi != null && cpi >= 4.5 ? 15 : 10;
+    if (w.gold > floor) move("gold", "liquid", Math.min(5, w.gold - floor), `Premium SJC ${pct(prem)} cao, có thể co lại theo Nghị định 232: bán vàng lúc này được giá.`);
+  } else if (prem != null && prem < 0.03) move("liquid", "gold", 5, `Premium SJC thấp (${pct(prem)}): vàng trong nước đang rẻ so với thế giới.`);
+  if (!reasons.length) reasons.push({ text: "Chưa có tín hiệu điều chỉnh: dùng tỷ trọng chiến lược Cân bằng.", delta: "" });
+  return { w, reasons };
+}
+const LABEL = { liquid: "Tiền mặt + tiết kiệm", bond: "Trái phiếu", equity: "Cổ phiếu", gold: "Vàng", sat: "Vệ tinh" };
 
 function currentMix(st) {
   return { gold: st.gold * P.latest.sjc_buy, cash: Math.max(st.cash, 0), dep: st.depVal, bond: 0, equity: 0, sat: 0 };
 }
 
 function targetMix(total, profileKey) {
-  const p = planCfg(), key = profileKey || p.profile, prof = PROFILES[key] || PROFILES.stage1;
-  if (!prof.w) {
-    const gold = Math.min(S.settings.keep * P.latest.sjc_buy, total);
-    const cash = Math.min(p.emergency, total - gold);
-    return { gold, cash, dep: total - gold - cash, bond: 0, equity: 0, sat: 0 };
-  }
-  const w = prof.w, s = Object.values(w).reduce((a, b) => a + b, 0);
+  const p = planCfg(), key = profileKey || p.profile, prof = PROFILES[key] || PROFILES.rec;
+  const w = prof.dynamic ? recommendation().w : prof.w, s = Object.values(w).reduce((a, b) => a + b, 0);
   const liquid = (total * w.liquid) / s, cash = Math.min(p.emergency, liquid);
   return { gold: (total * w.gold) / s, cash, dep: liquid - cash, bond: (total * w.bond) / s, equity: (total * w.equity) / s, sat: (total * w.sat) / s };
 }
 
-/** Số lượng vàng giữ lại theo hồ sơ đang chọn. Giai đoạn 1 dùng quy tắc cố định (Cài đặt → Giữ lại);
-    các hồ sơ khác = tỷ trọng vàng mục tiêu, làm tròn thành lượng nguyên (vàng miếng 1 lượng). */
+/** Số lượng vàng giữ lại = tỷ trọng vàng mục tiêu của hồ sơ đang chọn, làm tròn lượng nguyên (vàng miếng 1 lượng),
+    không thấp hơn mức "Giữ tối thiểu" trong cài đặt. */
 function goldKeep(st) {
   const p = planCfg();
-  if (!PROFILES[p.profile]?.w) return { keep: S.settings.keep, exact: null, profile: p.profile };
   const total = Object.values(currentMix(st)).reduce((a, b) => a + b, 0);
   const exact = targetMix(total, p.profile).gold / P.latest.sjc_buy;
-  return { keep: Math.max(0, Math.round(exact)), exact, profile: p.profile };
+  const min = S.settings.minKeep || 0, keep = Math.max(min, Math.round(exact));
+  return { keep, exact, min, floored: keep > Math.round(exact), profile: p.profile };
 }
 
 /* ---------- Monte Carlo ---------- */
@@ -141,7 +173,7 @@ function renderProfileCards(cur, total, p) {
   }
   $("#profileCards").innerHTML = cards.map((c) => `
     <div class="pcard${c.base ? " base" : ""}" ${c.base ? "" : `data-profile="${c.key}" role="button" tabindex="0"`}>
-      <h3>${esc(c.name)}</h3>
+      <h3>${esc(c.name)}${c.key === "rec" ? ' <span class="tag">Đề xuất</span>' : ""}</h3>
       <div class="pie"><canvas id="pie_${c.key}"></canvas></div>
       ${CLASSES.map(([k, name, color]) => {
         const w = total ? (c.mix[k] / total) * 100 : 0;
@@ -186,12 +218,18 @@ function renderPlan(st) {
       <td class="tip">${tip}</td></tr>`;
   });
   $("#planTable").innerHTML = `<tr><th>Lớp tài sản</th><th>Hiện tại</th><th>Mục tiêu</th><th>Cần làm</th><th class="tip">Gợi ý công cụ</th></tr>` + rows.join("");
-  $("#planNote").textContent = p.profile === "stage1"
-    ? `Giai đoạn 1: giữ ${S.settings.keep} lượng vàng, quỹ khẩn cấp ${money(p.emergency)}, phần còn lại gửi tiết kiệm (lãi ~8,2% đang cao, phần bù rủi ro cổ phiếu mỏng). Chuyển sang hồ sơ khác khi lãi suất giảm hoặc thị trường vào pha phục hồi.`
-    : `Hồ sơ "${PROFILES[p.profile].name}" theo PROJECT_PLAN mục 4. Đây là đích đến sau 12–18 tháng: chuyển dần, không làm một lần. Vàng vẫn bán theo lộ trình.`;
+  const rec = recommendation();
+  $("#recBox").innerHTML = `<h3 class="sub">Vì sao đề xuất như vậy <span class="tag">Đề xuất</span></h3>
+    <p class="small">Bắt đầu từ tỷ trọng chiến lược <b>Cân bằng</b> (khung CFA), rồi điều chỉnh theo số liệu hiện tại:</p>
+    <ol class="reasons">${rec.reasons.map((r) => `<li>${esc(r.text)}${r.delta ? ` <span class="muted">(${esc(r.delta)})</span>` : ""}</li>`).join("")}</ol>
+    <p class="muted small">Đề xuất tính lại tự động mỗi khi dữ liệu thị trường cập nhật (4 lần/ngày) và khi số liệu vĩ mô Việt Nam được cập nhật hằng tháng. Đây là quy tắc điều chỉnh chiến thuật, không phải dự báo.</p>` +
+    (p.profile !== "rec" ? `<p class="advice small">Bạn đang áp dụng hồ sơ <b>${esc(PROFILES[p.profile].name)}</b>, khác với đề xuất hiện tại. <button type="button" class="ghost" data-apply-rec>Áp dụng đề xuất</button></p>` : "");
+  $("#planNote").textContent = p.profile === "rec"
+    ? `Bảng trên là các bước điều chỉnh để danh mục khớp với đề xuất. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo lộ trình ở trên.`
+    : `Hồ sơ "${PROFILES[p.profile].name}" là tỷ trọng cố định theo PROJECT_PLAN mục 4, không đổi theo thị trường. Chuyển dần trong 12–18 tháng; vàng bán theo lộ trình.`;
 
   const { profile, ...rest } = p;
-  const cardKey = JSON.stringify([cur, rest, S.settings.keep, P.latest.premium]);
+  const cardKey = JSON.stringify([cur, rest, S.settings.minKeep, P.latest.premium, rec.w]);
   if (cardKey !== profileCardKey) { profileCardKey = cardKey; renderProfileCards(cur, total, p); }
   document.querySelectorAll(".pcard").forEach((c) => c.classList.toggle("on", c.dataset.profile === p.profile));
 
@@ -266,6 +304,10 @@ function bindPlan() {
     planCfg().profile = c.dataset.profile; save(); render();
   };
   $("#profileCards").addEventListener("click", pick);
+  $("#recBox").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-apply-rec]")) return;
+    planCfg().profile = "rec"; save(); render();
+  });
   $("#profileCards").addEventListener("keydown", pick);
   $("#horizon").onclick = (e) => {
     const h = e.target.dataset?.h;
