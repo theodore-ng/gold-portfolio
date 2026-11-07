@@ -1,7 +1,7 @@
 "use strict";
 /* Vĩ mô, dòng tiền, rủi ro suy thoái, lạm phát & sức mua. Dùng tiện ích trong app.js. */
 
-let M = null, VNM = null, flowPeriod = "chg3m";
+let M = null, VNM = null, INV = null, flowPeriod = "chg3m";
 const RAW = "https://raw.githubusercontent.com/theodore-ng/gold-portfolio/main/data/";
 
 async function fetchJson(name) {
@@ -10,7 +10,7 @@ async function fetchJson(name) {
   }
   return null;
 }
-async function loadMacro() { [M, VNM] = await Promise.all([fetchJson("macro.json"), fetchJson("vn_macro.json")]); }
+async function loadMacro() { [M, VNM, INV] = await Promise.all([fetchJson("macro.json"), fetchJson("vn_macro.json"), fetchJson("invest.json")]); }
 const vn = (k) => VNM?.items.find((x) => x.key === k);
 const cpiRate = () => (vn("cpiYoy")?.value ?? 4) / 100;
 const realRate = (nominal) => (1 + nominal) / (1 + cpiRate()) - 1;

@@ -71,9 +71,12 @@ function cme(p, years) {
   const goldBoost = cpi != null && cpi >= 4.5 ? 1 : 0;
   const gold = p.rGold + drag + goldBoost;
   notes.push(["gold", `Vàng TG ${nf(p.rGold, 1)}%; premium ${pct(prem0)} → ${nf(p.premTarget, 0)}%: ${nf(drag, 1)}%/năm${goldBoost ? `; lạm phát ${nf(cpi, 2)}% cao: +1` : ""} → ${nf(gold, 1)}%`]);
-  notes.push(["bond", `Lợi suất quỹ trái phiếu ${nf(p.rBond, 1)}% (CFA: lợi nhuận kỳ vọng trái phiếu ≈ lợi suất hiện tại)`]);
+  const bondR = INV?.bondMedian12m ?? p.rBond;
+  notes.push(["bond", INV?.bondMedian12m != null
+    ? `Trung vị lợi nhuận 12 tháng của ${INV.bondFunds.length} quỹ trái phiếu: ${nf(bondR, 2)}% (CFA: kỳ vọng trái phiếu ≈ lợi suất hiện tại)`
+    : `Giả định ${nf(p.rBond, 1)}% (CFA: kỳ vọng trái phiếu ≈ lợi suất hiện tại)`]);
   notes.push(["sat", `Như cổ phiếu (${nf(eq, 1)}%) vì CFA giả định alpha = 0, nhưng biến động cao hơn (${nf(p.vSat, 0)}%)`]);
-  const r = { liquid, bond: p.rBond, equity: eq, gold, sat: eq };
+  const r = { liquid, bond: bondR, equity: eq, gold, sat: eq };
   const v = { liquid: 0.5, bond: p.vBond, equity: p.vEq, gold: p.vGold, sat: p.vSat };
   return { r, v, notes: Object.fromEntries(notes) };
 }
@@ -186,7 +189,7 @@ function simulate(A, B, years, p, paths = 2000) {
         const g = Math.exp(lg(p.rGold) + sd(p.vGold) * z1 + (m <= 24 ? premDrag : 0));
         const eq = Math.exp(lg(c.r.equity) + sd(p.vEq) * e);
         const sat = Math.exp(lg(c.r.sat) + sd(p.vSat) * (0.8 * e + 0.6 * z3));
-        const bd = Math.exp(lg(p.rBond) + sd(p.vBond) * z4);
+        const bd = Math.exp(lg(c.r.bond) + sd(p.vBond) * z4);
         const gr = { gold: g, cash: fixed.cash, dep: m <= 12 ? fixed.dep1 : fixed.dep, bond: bd, equity: eq, sat };
         for (const k of keys) { a[k] *= gr[k]; b[k] *= gr[k]; }
         if (m % 12 === 0) { const t = keys.reduce((s, k) => s + b[k], 0); for (const k of keys) b[k] = t * wB[k]; }
@@ -205,7 +208,7 @@ function simulate(A, B, years, p, paths = 2000) {
 }
 
 function passiveIncome(mix, p) { // tr/năm, năm đầu
-  return mix.dep * depNow(p) / 100 + mix.cash * p.rCash / 100 + mix.bond * p.rBond / 100 + mix.equity * p.divEq / 100;
+  return mix.dep * depNow(p) / 100 + mix.cash * p.rCash / 100 + mix.bond * (INV?.bondMedian12m ?? p.rBond) / 100 + mix.equity * p.divEq / 100;
 }
 
 /** Vàng cần tăng bao nhiêu %/năm để giữ nguyên hòa với dự án (theo trung vị). */

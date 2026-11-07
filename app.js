@@ -5,7 +5,7 @@
 const KEY = "quyvang_v1";
 const PRICE_URLS = ["https://raw.githubusercontent.com/theodore-ng/gold-portfolio/main/data/prices.json", "data/prices.json"];
 const PNJ_URL = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00";
-const DEFAULT_SETTINGS = { minKeep: 0, tranche: 1, extra: 1, premHigh: 10, premLow: 3, xauConfirm: 4450, xauSupport: 3900 };
+const DEFAULT_SETTINGS = { minKeep: 0, dcaMonths: 12, tranche: 1, extra: 1, premHigh: 10, premLow: 3, xauConfirm: 4450, xauSupport: 3900 };
 
 let S = null;          // trạng thái người dùng
 let P = null;          // giá: {updated, latest, history[]}
@@ -218,6 +218,7 @@ function render() {
   renderAlloc(goldVal, st.cash, st.depVal, total);
   renderCharts(st);
   renderPlan(st);
+  renderInvest(st);
   renderInflation(st);
   $("#cashNow").textContent = money(st.cash);
   sellPreview();
