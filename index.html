@@ -8,18 +8,39 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 1l7 7-7 7-7-7z' fill='%23b8862b'/></svg>">
 <link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
 </head>
 <body>
 <header>
   <h1>Quỹ Vàng</h1>
-  <div id="priceStamp" class="muted">Đang tải giá…</div>
+  <div class="row wrap gap">
+    <div id="priceStamp" class="muted">Đang tải giá…</div>
+    <div id="userBox" class="row gap" hidden>
+      <span id="userName"></span><span id="userRole" class="badge" hidden>Quản trị</span>
+      <span id="saveState" class="muted small"></span>
+      <button id="btnLogout" type="button" class="ghost">Đăng xuất</button>
+    </div>
+  </div>
 </header>
 
 <main>
+  <!-- Đăng nhập -->
+  <section id="login" class="card narrow" hidden>
+    <h2>Đăng nhập</h2>
+    <form id="loginForm">
+      <label>Tên đăng nhập<input name="user" autocomplete="username" required></label>
+      <label>Mật khẩu<input name="pass" type="password" autocomplete="current-password" required></label>
+      <p id="loginErr" class="warn small"></p>
+      <button type="submit">Đăng nhập</button>
+    </form>
+    <p class="muted small">Tài khoản do quản trị viên cấp. Liên hệ quản trị viên nếu quên mật khẩu.</p>
+  </section>
+
   <!-- Lần đầu: thiết lập -->
   <section id="setup" class="card" hidden>
     <h2>Thiết lập danh mục</h2>
-    <p class="muted">Dữ liệu chỉ lưu trong trình duyệt này, không gửi lên máy chủ nào. Nhập file sao lưu nếu đã có.</p>
+    <p class="muted" id="setupNote">Dữ liệu chỉ lưu trong trình duyệt này, không gửi lên máy chủ nào. Nhập file sao lưu nếu đã có.</p>
     <form id="setupForm" class="grid">
       <label>Số lượng vàng SJC (lượng)<input name="luong" type="number" step="0.01" min="0" required></label>
       <label>Giá vốn (tr/lượng, bỏ trống nếu chưa rõ)<input name="cost" type="number" step="0.01" min="0"></label>
@@ -45,6 +66,30 @@
       <p id="glideProgress"></p>
       <p id="glideAdvice" class="advice"></p>
       <p class="muted small" id="glideRule"></p>
+    </section>
+
+    <!-- Định hướng -->
+    <section class="card">
+      <div class="row between">
+        <h2>Định hướng phân bổ</h2>
+        <select id="planProfile" class="auto"></select>
+      </div>
+      <div class="tablewrap"><table id="planTable"></table></div>
+      <p class="muted small" id="planNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="row between">
+        <h2>So sánh: theo dự án và giữ nguyên</h2>
+        <div class="seg" id="horizon">
+          <button data-h="1">1N</button><button data-h="3">3N</button><button data-h="5">5N</button><button data-h="10">10N</button>
+        </div>
+      </div>
+      <div class="chartbox"><canvas id="chartCmp"></canvas></div>
+      <div class="tablewrap"><table id="cmpTable"></table></div>
+      <p id="cmpBreakeven" class="advice"></p>
+      <details><summary>Giả định (chỉnh được)</summary><form id="assumeForm" class="grid"></form></details>
+      <p class="muted small">Mô phỏng 2.000 kịch bản theo tháng. "Giữ nguyên" = danh mục hiện tại, không tái cân bằng. "Theo dự án" = phân bổ mục tiêu ở trên, tái cân bằng mỗi năm, giả định chuyển đổi ngay (thực tế chuyển dần nên kết quả sẽ nằm giữa hai đường). Vùng mờ là khoảng 5%–95% kịch bản. Kết quả phụ thuộc hoàn toàn vào giả định, không phải dự báo.</p>
     </section>
 
     <!-- Biểu đồ -->
@@ -159,6 +204,7 @@
     <p class="muted small center">Công cụ theo dõi cá nhân, không phải khuyến nghị đầu tư. Giá: PNJ (trực tiếp) và Yahoo Finance (cập nhật vài lần/ngày).</p>
   </div>
 </main>
+<script src="plan.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

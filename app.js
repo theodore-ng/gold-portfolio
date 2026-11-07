@@ -28,8 +28,22 @@ const num = (v) => (v === "" || v == null ? null : Number(v));
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const daysBetween = (a, b) => (new Date(b) - new Date(a)) / 864e5;
 
+/* ---------- lưu trữ: Supabase (nếu đã cấu hình) hoặc trình duyệt ---------- */
+const CFG = window.QV_CONFIG || {};
+const sb = CFG.supabaseUrl && CFG.supabaseKey && window.supabase ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
+let user = null, saveTimer = null;
+
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { alert("Không lưu được vào trình duyệt: " + e.message); }
+  if (!sb) {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { alert("Không lưu được vào trình duyệt: " + e.message); }
+    return;
+  }
+  $("#saveState").textContent = "Đang lưu…";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const { error } = await sb.from("portfolios").upsert({ user_id: user.id, data: S, updated_at: new Date().toISOString() });
+    $("#saveState").innerHTML = error ? `<span class="warn">Lỗi lưu: ${esc(error.message)}</span>` : "Đã lưu ✓";
+  }, 600);
 }
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch { return null; }
@@ -186,6 +200,7 @@ function render() {
   renderTx(st);
   renderAlloc(goldVal, st.cash, st.depVal, total);
   renderCharts(st);
+  renderPlan(st);
   $("#cashNow").textContent = money(st.cash);
   sellPreview();
 }
@@ -303,6 +318,21 @@ function addTx(t) {
 
 function bind() {
   document.querySelectorAll('input[type=date]').forEach((i) => (i.value = today()));
+  bindPlan();
+
+  $("#loginForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target, u = f.user.value.trim().toLowerCase();
+    const email = u.includes("@") ? u : `${u}@${CFG.emailDomain}`;
+    $("#loginErr").textContent = "";
+    f.querySelector("button").disabled = true;
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: f.pass.value });
+    f.querySelector("button").disabled = false;
+    f.pass.value = "";
+    if (error) { $("#loginErr").textContent = "Sai tên đăng nhập hoặc mật khẩu."; return; }
+    await afterLogin(data.user);
+  };
+  $("#btnLogout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
 
   $("#setupForm").onsubmit = (e) => {
     e.preventDefault();
@@ -396,10 +426,11 @@ function bind() {
     } catch (err) { alert("Không nhập được: " + err.message); }
     inp.value = "";
   }));
-  $("#btnReset").onclick = () => {
+  $("#btnReset").onclick = async () => {
     if (!confirm("Xóa toàn bộ dữ liệu trong trình duyệt này? Hãy xuất sao lưu trước.")) return;
     if (prompt('Gõ "XOA" để xác nhận') !== "XOA") return;
     try { localStorage.removeItem(KEY); } catch { /* bỏ qua */ }
+    if (sb) await sb.from("portfolios").delete().eq("user_id", user.id);
     location.reload();
   };
 
@@ -417,13 +448,38 @@ function start() {
   const f = $("#setForm");
   for (const k of Object.keys(DEFAULT_SETTINGS)) f[k].value = S.settings[k];
   $("#sellForm").price.value = P.latest.sjc_buy;
+  fillAssume();
   render();
+}
+
+async function afterLogin(u) {
+  user = u;
+  $("#login").hidden = true;
+  const { data: prof } = await sb.from("profiles").select("username, role").eq("id", u.id).maybeSingle();
+  $("#userBox").hidden = false;
+  $("#userName").textContent = prof?.username || u.email.split("@")[0];
+  $("#userRole").hidden = prof?.role !== "admin";
+  const { data, error } = await sb.from("portfolios").select("data").eq("user_id", u.id).maybeSingle();
+  if (error) { alert("Không tải được dữ liệu: " + error.message); return; }
+  if (data && validState(data.data)) { S = data.data; start(); return; }
+  const local = load(); // lần đầu đăng nhập: đề nghị chuyển dữ liệu đang có trên trình duyệt lên tài khoản
+  if (validState(local) && confirm("Tìm thấy dữ liệu trên trình duyệt này. Chuyển lên tài khoản của bạn?")) {
+    S = local; save(); start(); return;
+  }
+  $("#setupNote").textContent = "Dữ liệu được lưu vào tài khoản của bạn, chỉ bạn xem được. Nhập file sao lưu nếu đã có.";
+  $("#setup").hidden = false;
 }
 
 (async function main() {
   bind();
   await loadPrices();
   if (!P || !P.history?.length) { $("#priceStamp").innerHTML = '<span class="warn">Không tải được giá vàng. Kiểm tra kết nối mạng.</span>'; return; }
+  if (sb) {
+    const { data } = await sb.auth.getSession();
+    if (data.session) await afterLogin(data.session.user);
+    else $("#login").hidden = false;
+    return;
+  }
   S = load();
   if (validState(S)) start();
   else $("#setup").hidden = false;
