@@ -1,0 +1,15 @@
+{
+  "_note": "Cập nhật thủ công hằng tháng sau khi Cục Thống kê công bố (khoảng ngày 6 hằng tháng). Đơn vị: %.",
+  "asOf": "2026-11-07",
+  "items": [
+    { "key": "cpiYoy", "name": "CPI so với cùng kỳ", "value": 5.09, "period": "10/2026", "source": "Cục Thống kê", "url": "https://tapchikinhtetaichinh.vn/cpi-thang-10-tang-0-2-gia-luong-thuc-thuc-pham-va-du-lich-giam-171407.html" },
+    { "key": "cpiMom", "name": "CPI so với tháng trước", "value": 0.2, "period": "10/2026", "source": "Cục Thống kê", "url": "https://tapchikinhtetaichinh.vn/cpi-thang-10-tang-0-2-gia-luong-thuc-thuc-pham-va-du-lich-giam-171407.html" },
+    { "key": "cpiAvg", "name": "CPI bình quân từ đầu năm", "value": 4.57, "period": "10T/2026", "source": "Cục Thống kê", "url": "https://baodauthau.vn/10-thang-dau-nam-2026-cpi-tang-457-post211700.html" },
+    { "key": "coreYoy", "name": "Lạm phát cơ bản so với cùng kỳ", "value": 4.04, "period": "10/2026", "source": "Cục Thống kê", "url": "https://thitruongtaichinhtiente.vn/10-thang-dau-nam-2026-cpi-tang-4-57-lam-phat-co-ban-tang-4-24-86769.html" },
+    { "key": "gdpQ", "name": "GDP quý so với cùng kỳ", "value": 9.95, "period": "Q3/2026", "source": "Cục Thống kê", "url": "https://tapchikinhtetaichinh.vn/tong-san-pham-trong-nuoc-gdp-quy-iii-2026-tang-9-95-168574.html" },
+    { "key": "gdpYtd", "name": "GDP 9 tháng", "value": 9.01, "period": "9T/2026", "source": "Cục Thống kê", "url": "https://www.vietnamplus.vn/toc-do-tang-truong-gdp-chin-thang-nam-2026-uoc-dat-901-so-voi-cung-ky-post1139772.vnp" },
+    { "key": "credit", "name": "Tín dụng so với cuối năm trước", "value": 11.59, "period": "30/09/2026", "source": "NHNN", "url": "https://vnba.org.vn/vi/du-no-tin-dung-toan-he-thong-dat-khoang-20-75-trieu-ty-dong-tinh-den-30-9-2026-23786.htm" },
+    { "key": "publicInv", "name": "Giải ngân đầu tư công / kế hoạch", "value": 74.1, "period": "10T/2026", "source": "Bộ Tài chính", "url": "https://baodauthau.vn/10-thang-nam-2026-giai-ngan-von-dau-tu-cong-dat-741-ke-hoach-post211842.html" },
+    { "key": "deposit", "name": "Lãi tiết kiệm 12 tháng (tham khảo)", "value": 8.2, "period": "11/2026", "source": "Bảng lãi suất ngân hàng", "url": "" }
+  ]
+}

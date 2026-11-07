@@ -65,6 +65,28 @@ select.auto { width: auto; }
 .badge { background: var(--gold); color: #fff; border-radius: 99px; padding: 1px 8px; font-size: 12px; font-weight: 600; }
 td.tip, th.tip { text-align: left; white-space: normal; min-width: 240px; color: var(--muted); font-size: 13px; }
 #cmpTable { margin-top: 12px; }
+h3.sub { font-size: 14px; margin: 18px 0 8px; color: var(--muted); font-weight: 600; }
+.chartbox.tall { height: 380px; } .chartbox.short { height: 200px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile span { display: block; font-size: 12px; color: var(--muted); }
+.tile b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.tile small { color: var(--muted); font-size: 12px; }
+.tile a { color: var(--accent); }
+.chip { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }
+.chip.ok { background: var(--up); } .chip.warn { background: #c98a1c; } .chip.alert { background: var(--down); }
+.pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.pcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; background: var(--bg); transition: border-color .15s; }
+.pcard:hover { border-color: var(--accent); }
+.pcard.on { border: 2px solid var(--accent); padding: 11px; }
+.pcard.base { cursor: default; border-style: dashed; }
+.pcard h3 { font-size: 14px; margin: 0 0 8px; min-height: 2.6em; }
+.pcard .pie { height: 130px; position: relative; margin-bottom: 8px; }
+.pcard .legend { list-style: none; padding: 0; margin: 0 0 8px; font-size: 12px; }
+.pcard .legend li { display: flex; align-items: center; }
+.pcard .legend b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.pcard dl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin: 0; font-size: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.pcard dt { color: var(--muted); } .pcard dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 details { margin-top: 12px; } summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 @media (max-width: 820px) {
   .kpis { grid-template-columns: 1fr 1fr; }

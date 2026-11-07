@@ -90,5 +90,75 @@ def main():
     print(f"{len(days)} ngày | {latest}")
 
 
+MACRO = OUT.parent / "macro.json"
+MARKETS = [  # (khóa, tên, ticker Yahoo, đơn vị: "%" thay đổi theo %, "pt" thay đổi theo điểm)
+    ("gold", "Vàng", "GC=F", "%"), ("silver", "Bạc", "SI=F", "%"), ("btc", "Bitcoin", "BTC-USD", "%"),
+    ("spx", "S&P 500", "^GSPC", "%"), ("em", "Cổ phiếu mới nổi (EEM)", "EEM", "%"), ("oil", "Dầu WTI", "CL=F", "%"),
+    ("copper", "Đồng", "HG=F", "%"), ("dxy", "USD (DXY)", "DX-Y.NYB", "%"), ("usdvnd", "USD/VND", "VND=X", "%"),
+    ("us10y", "Lợi suất Mỹ 10 năm", "^TNX", "pt"), ("us3m", "Lợi suất Mỹ 3 tháng", "^IRX", "pt"), ("vix", "VIX (sợ hãi)", "^VIX", "pt"),
+]
+FRED = {"T10Y3M": "Chênh lệch lợi suất 10 năm − 3 tháng", "SAHMREALTIME": "Quy tắc Sahm",
+        "BAMLH0A0HYM2": "Chênh lệch trái phiếu lợi suất cao", "RECPROUSM156N": "Xác suất suy thoái Mỹ", "CPIAUCSL": "CPI Mỹ"}
+
+
+def series_stats(s, unit):
+    s = s.dropna()
+    last = float(s.iloc[-1])
+    ch = lambda n: None if len(s) <= n else round(last - float(s.iloc[-1 - n]), 3) if unit == "pt" else round(last / float(s.iloc[-1 - n]) - 1, 4)  # noqa: E731
+    ma200 = float(s.tail(200).mean())
+    return {"last": round(last, 4), "date": s.index[-1].strftime("%Y-%m-%d"), "chg1m": ch(21), "chg3m": ch(63), "chg1y": ch(252),
+            "vsMa200": round(last / ma200 - 1, 4) if unit == "%" else None, "unit": unit}
+
+
+def fred(sid):
+    import csv, io
+    txt = requests.get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}", headers=H, timeout=30).text
+    rows = [(d, float(v)) for d, v in list(csv.reader(io.StringIO(txt)))[1:] if v not in (".", "")]
+    return rows
+
+
+def update_macro():
+    out = {"updated": datetime.now(VN).isoformat(timespec="minutes"), "markets": {}, "fred": {}}
+    for key, name, t, unit in MARKETS:
+        try:
+            s = yf.Ticker(t).history(period="2y")["Close"]
+            out["markets"][key] = {"name": name, **series_stats(s, unit)}
+        except Exception as e:
+            print("Yahoo lỗi", t, e)
+    try:  # VN-Index từ VNDirect (có thể chặn IP nước ngoài)
+        import pandas as pd
+        now = int(datetime.now().timestamp())
+        j = requests.get("https://dchart-api.vndirect.com.vn/dchart/history", headers=H, timeout=20,
+                         params={"resolution": "D", "symbol": "VNINDEX", "from": now - 800 * 86400, "to": now}).json()
+        s = pd.Series(j["c"], index=pd.to_datetime(j["t"], unit="s")).astype(float)
+        out["markets"]["vnindex"] = {"name": "VN-Index", **series_stats(s, "%")}
+    except Exception as e:
+        print("VNDirect lỗi:", e)
+    for sid, name in FRED.items():
+        try:
+            rows = fred(sid)
+            item = {"name": name, "last": rows[-1][1], "date": rows[-1][0]}
+            if sid == "T10Y3M":
+                item["min24m"] = min(v for d, v in rows[-520:])
+                item["series"] = [[d, v] for d, v in rows if d >= f"{datetime.now().year - 10}" and d[8:10] <= "07" and d[8:10] >= "01"][::5]
+            if sid == "CPIAUCSL":
+                item["yoy"] = round(rows[-1][1] / rows[-13][1] - 1, 4)
+            out["fred"][sid] = item
+        except Exception as e:
+            print("FRED lỗi", sid, e)
+    try:  # lạm phát VN theo năm (World Bank)
+        j = requests.get("https://api.worldbank.org/v2/country/VNM/indicator/FP.CPI.TOTL.ZG?format=json&per_page=30",
+                         headers=H, timeout=30).json()[1]
+        out["vnCpiAnnual"] = sorted([[int(r["date"]), round(r["value"], 2)] for r in j if r["value"] is not None and int(r["date"]) >= 2010])
+    except Exception as e:
+        print("World Bank lỗi:", e)
+    MACRO.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print(f"macro: {len(out['markets'])} thị trường, {len(out['fred'])} chuỗi FRED")
+
+
 if __name__ == "__main__":
     main()
+    try:
+        update_macro()
+    except Exception as e:  # lỗi vĩ mô không được chặn cập nhật giá
+        print("Macro lỗi:", e)

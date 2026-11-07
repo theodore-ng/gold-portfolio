@@ -201,6 +201,7 @@ function render() {
   renderAlloc(goldVal, st.cash, st.depVal, total);
   renderCharts(st);
   renderPlan(st);
+  renderInflation(st);
   $("#cashNow").textContent = money(st.cash);
   sellPreview();
 }
@@ -319,6 +320,7 @@ function addTx(t) {
 function bind() {
   document.querySelectorAll('input[type=date]').forEach((i) => (i.value = today()));
   bindPlan();
+  bindMacro();
 
   $("#loginForm").onsubmit = async (e) => {
     e.preventDefault();
@@ -449,6 +451,7 @@ function start() {
   for (const k of Object.keys(DEFAULT_SETTINGS)) f[k].value = S.settings[k];
   $("#sellForm").price.value = P.latest.sjc_buy;
   fillAssume();
+  renderMacroStatic();
   render();
 }
 
@@ -472,7 +475,7 @@ async function afterLogin(u) {
 
 (async function main() {
   bind();
-  await loadPrices();
+  await Promise.all([loadPrices(), loadMacro()]);
   if (!P || !P.history?.length) { $("#priceStamp").innerHTML = '<span class="warn">Không tải được giá vàng. Kiểm tra kết nối mạng.</span>'; return; }
   if (sb) {
     const { data } = await sb.auth.getSession();

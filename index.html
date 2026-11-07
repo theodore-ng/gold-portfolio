@@ -74,6 +74,8 @@
         <h2>Định hướng phân bổ</h2>
         <select id="planProfile" class="auto"></select>
       </div>
+      <div class="pcards" id="profileCards"></div>
+      <p class="muted small">Bấm vào một thẻ để chọn hồ sơ. Số liệu mỗi thẻ là trung vị của 600 kịch bản theo giả định ở mục So sánh bên dưới.</p>
       <div class="tablewrap"><table id="planTable"></table></div>
       <p class="muted small" id="planNote"></p>
     </section>
@@ -90,6 +92,41 @@
       <p id="cmpBreakeven" class="advice"></p>
       <details><summary>Giả định (chỉnh được)</summary><form id="assumeForm" class="grid"></form></details>
       <p class="muted small">Mô phỏng 2.000 kịch bản theo tháng. "Giữ nguyên" = danh mục hiện tại, không tái cân bằng. "Theo dự án" = phân bổ mục tiêu ở trên, tái cân bằng mỗi năm, giả định chuyển đổi ngay (thực tế chuyển dần nên kết quả sẽ nằm giữa hai đường). Vùng mờ là khoảng 5%–95% kịch bản. Kết quả phụ thuộc hoàn toàn vào giả định, không phải dự báo.</p>
+    </section>
+
+    <!-- Vĩ mô -->
+    <section class="card">
+      <h2>Kinh tế Việt Nam</h2>
+      <div class="tiles" id="vnTiles"></div>
+      <p class="muted small" id="vnNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="row between">
+        <h2>Dòng tiền liên thị trường</h2>
+        <div class="seg" id="flowPeriod"><button data-f="chg1m">1T</button><button data-f="chg3m" class="on">3T</button><button data-f="chg1y">1N</button></div>
+      </div>
+      <p id="flowSummary"></p>
+      <div class="chartbox tall"><canvas id="chartFlow"></canvas></div>
+    </section>
+
+    <section class="card">
+      <h2>Rủi ro suy thoái</h2>
+      <p id="recLevel"></p>
+      <div class="tablewrap"><table id="recTable"></table></div>
+      <p class="small" id="recVN"></p>
+      <h3 class="sub">Đường cong lợi suất Mỹ 10 năm − 3 tháng (vùng đỏ = đảo ngược)</h3>
+      <div class="chartbox short"><canvas id="chartCurve"></canvas></div>
+    </section>
+
+    <section class="card">
+      <h2>Lạm phát &amp; sức mua</h2>
+      <div class="tiles" id="inflTiles"></div>
+      <div class="chartbox"><canvas id="chartInfl"></canvas></div>
+      <p class="muted small" id="inflNote"></p>
+      <h3 class="sub">Lạm phát Việt Nam theo năm (* = bình quân từ đầu năm nay)</h3>
+      <div class="chartbox short"><canvas id="chartCpi"></canvas></div>
+      <p class="muted small" id="macroStamp"></p>
     </section>
 
     <!-- Biểu đồ -->
@@ -205,6 +242,7 @@
   </div>
 </main>
 <script src="plan.js"></script>
+<script src="macro.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

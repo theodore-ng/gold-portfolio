@@ -18,9 +18,10 @@ const CLASSES = [
 ];
 const DEFAULT_PLAN = {
   profile: "stage1", emergency: 60, horizon: 5,
-  rGold: 6, vGold: 17, premTarget: 3, rDep: 7.5, rCash: 0.5, rBond: 6.5, vBond: 3, rEq: 11, vEq: 20, divEq: 2, rSat: 11, vSat: 30,
+  rGold: 6, vGold: 17, premTarget: 3, rDep: 7.5, rCash: 0.5, rBond: 6.5, vBond: 3, rEq: 11, vEq: 20, divEq: 2, rSat: 11, vSat: 30, infl: 4,
 };
 const ASSUME_FIELDS = [
+  ["infl", "Lạm phát dài hạn (%)"],
   ["emergency", "Quỹ khẩn cấp (tr)"], ["rGold", "Vàng TG: tăng/năm (%)"], ["vGold", "Vàng: biến động/năm (%)"],
   ["premTarget", "Premium SJC sau 2 năm (%)"], ["rDep", "Lãi tiết kiệm (%)"], ["rCash", "Lãi tiền mặt (%)"],
   ["rBond", "Quỹ trái phiếu (%)"], ["vBond", "Quỹ TP: biến động (%)"], ["rEq", "Cổ phiếu lõi gồm cổ tức (%)"],
@@ -33,8 +34,8 @@ function currentMix(st) {
   return { gold: st.gold * P.latest.sjc_buy, cash: Math.max(st.cash, 0), dep: st.depVal, bond: 0, equity: 0, sat: 0 };
 }
 
-function targetMix(total) {
-  const p = planCfg(), prof = PROFILES[p.profile] || PROFILES.stage1;
+function targetMix(total, profileKey) {
+  const p = planCfg(), prof = PROFILES[profileKey || p.profile] || PROFILES.stage1;
   if (!prof.w) {
     const gold = Math.min(S.settings.keep * P.latest.sjc_buy, total);
     const cash = Math.min(p.emergency, total - gold);
@@ -105,8 +106,56 @@ function breakeven(A, B, years, p) {
   let lo = -10, hi = 40;
   const diff = (r) => { const s = simulate(A, B, years, { ...p, rGold: r }, 400); return s.A[s.n][1] - s.B[s.n][1]; };
   if (diff(hi) < 0) return null;
-  for (let k = 0; k < 14; k++) { const mid = (lo + hi) / 2; if (diff(mid) < 0) lo = mid; else hi = mid; }
+  for (let k = 0; k < 10; k++) { const mid = (lo + hi) / 2; if (diff(mid) < 0) lo = mid; else hi = mid; }
   return (lo + hi) / 2;
+}
+
+/* ---------- thẻ so sánh các hồ sơ ---------- */
+let profileCardKey = "";
+function renderProfileCards(cur, total, p) {
+  const keys = Object.keys(PROFILES), y = p.horizon, defl = Math.pow(1 + p.infl / 100, y);
+  const box = $("#profileCards");
+  box.innerHTML = keys.map((k) => `<div class="pcard" data-profile="${k}" role="button" tabindex="0">
+      <h3>${esc(PROFILES[k].name)}</h3>
+      <div class="pie"><canvas id="pie_${k}"></canvas></div>
+      <ul class="legend" id="leg_${k}"></ul>
+      <dl id="st_${k}"></dl>
+    </div>`).join("");
+  for (const k of keys) {
+    const tgt = targetMix(total, k);
+    const sim = simulate(cur, tgt, y, p, 600), f = sim.B[sim.n];
+    const parts = CLASSES.filter(([c]) => tgt[c] >= 0.5);
+    $("#leg_" + k).innerHTML = parts.map(([c, name, color]) => `<li><span class="dot" style="background:${css(color)}"></span>${name}<b>${nf((tgt[c] / total) * 100, 0)}%</b></li>`).join("");
+    $("#st_" + k).innerHTML =
+      `<dt>Trung vị sau ${y} năm</dt><dd>${money(f[1])}</dd>` +
+      `<dt>Tăng trưởng/năm</dt><dd>${pct(Math.pow(f[1] / total, 1 / y) - 1)}</dd>` +
+      `<dt>Theo sức mua hôm nay</dt><dd>${money(f[1] / defl)}</dd>` +
+      `<dt>Kịch bản xấu 5%</dt><dd>${money(f[0])}</dd>` +
+      `<dt>Sụt giảm tối đa</dt><dd>${pct(sim.mddB)}</dd>` +
+      `<dt>Thu nhập thụ động</dt><dd>${money(passiveIncome(tgt, p) / 12)}/th</dd>` +
+      `<dt>Hơn giữ nguyên</dt><dd>${nf(sim.beat * 100, 0)}% kịch bản</dd>`;
+    if (charts["pie_" + k]) charts["pie_" + k].destroy();
+    charts["pie_" + k] = new Chart($("#pie_" + k), {
+      type: "doughnut",
+      data: { labels: parts.map((x) => x[1]), datasets: [{ data: parts.map(([c]) => tgt[c]), backgroundColor: parts.map((x) => css(x[2])), borderWidth: 0 }] },
+      options: { cutout: "60%", maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.label}: ${money(c.parsed)} (${nf((c.parsed / total) * 100, 0)}%)` } } } },
+    });
+  }
+  // thẻ "Giữ nguyên" để đối chiếu
+  const parts = CLASSES.filter(([c]) => cur[c] >= 0.5);
+  box.insertAdjacentHTML("afterbegin", `<div class="pcard base"><h3>Giữ nguyên (hiện tại)</h3><div class="pie"><canvas id="pie_cur"></canvas></div>
+    <ul class="legend">${parts.map(([c, name, color]) => `<li><span class="dot" style="background:${css(color)}"></span>${name}<b>${nf((cur[c] / total) * 100, 0)}%</b></li>`).join("")}</ul>
+    <dl id="st_cur"></dl></div>`);
+  const simA = simulate(cur, cur, y, p, 600), fa = simA.A[simA.n];
+  $("#st_cur").innerHTML = `<dt>Trung vị sau ${y} năm</dt><dd>${money(fa[1])}</dd><dt>Tăng trưởng/năm</dt><dd>${pct(Math.pow(fa[1] / total, 1 / y) - 1)}</dd>` +
+    `<dt>Theo sức mua hôm nay</dt><dd>${money(fa[1] / defl)}</dd><dt>Kịch bản xấu 5%</dt><dd>${money(fa[0])}</dd>` +
+    `<dt>Sụt giảm tối đa</dt><dd>${pct(simA.mddA)}</dd><dt>Thu nhập thụ động</dt><dd>${money(passiveIncome(cur, p) / 12)}/th</dd>`;
+  if (charts.pie_cur) charts.pie_cur.destroy();
+  charts.pie_cur = new Chart($("#pie_cur"), {
+    type: "doughnut",
+    data: { labels: parts.map((x) => x[1]), datasets: [{ data: parts.map(([c]) => cur[c]), backgroundColor: parts.map((x) => css(x[2])), borderWidth: 0 }] },
+    options: { cutout: "60%", maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } } },
+  });
 }
 
 /* ---------- hiển thị ---------- */
@@ -136,6 +185,11 @@ function renderPlan(st) {
     ? `Giai đoạn 1: giữ ${S.settings.keep} lượng vàng, quỹ khẩn cấp ${money(p.emergency)}, phần còn lại gửi tiết kiệm (lãi ~8,2% đang cao, phần bù rủi ro cổ phiếu mỏng). Chuyển sang hồ sơ khác khi lãi suất giảm hoặc thị trường vào pha phục hồi.`
     : `Hồ sơ "${PROFILES[p.profile].name}" theo PROJECT_PLAN mục 4. Đây là đích đến sau 12–18 tháng: chuyển dần, không làm một lần. Vàng vẫn bán theo lộ trình.`;
 
+  const { profile, ...rest } = p;
+  const cardKey = JSON.stringify([cur, rest, S.settings.keep, P.latest.premium]);
+  if (cardKey !== profileCardKey) { profileCardKey = cardKey; renderProfileCards(cur, total, p); }
+  document.querySelectorAll(".pcard").forEach((c) => c.classList.toggle("on", c.dataset.profile === p.profile));
+
   // So sánh: chỉ chạy lại mô phỏng khi đầu vào thay đổi
   const key = JSON.stringify([cur, tgt, p, P.latest.premium]);
   if (key === simKey) return;
@@ -161,6 +215,7 @@ function renderCompare(sim, cur, tgt, total, p) {
   const pctFmt = (x) => pct(x);
   $("#cmpTable").innerHTML = `<tr><th>Sau ${y} năm</th><th>Giữ nguyên</th><th>Theo dự án</th><th>Chênh lệch</th></tr>` +
     row("Giá trị trung vị", fA[1], fB[1], money) +
+    row(`Theo sức mua hôm nay (lạm phát ${nf(p.infl, 1)}%)`, fA[1] / Math.pow(1 + p.infl / 100, y), fB[1] / Math.pow(1 + p.infl / 100, y), money) +
     row("Lãi trung vị", fA[1] - total, fB[1] - total, signed) +
     row("Tăng trưởng/năm (trung vị)", cagr(fA[1]), cagr(fB[1]), pctFmt) +
     row("Kịch bản xấu (5%)", fA[0], fB[0], money) +
@@ -200,6 +255,13 @@ function bindPlan() {
   form.innerHTML = ASSUME_FIELDS.map(([k, l]) => `<label>${l}<input name="${k}" type="number" step="0.1"></label>`).join("") +
     `<button type="submit">Tính lại</button><button type="button" class="ghost" id="assumeReset">Về mặc định</button>`;
   $("#planProfile").onchange = (e) => { planCfg().profile = e.target.value; save(); render(); };
+  const pick = (e) => {
+    const c = e.target.closest?.(".pcard[data-profile]");
+    if (!c || (e.type === "keydown" && e.key !== "Enter")) return;
+    planCfg().profile = c.dataset.profile; save(); render();
+  };
+  $("#profileCards").addEventListener("click", pick);
+  $("#profileCards").addEventListener("keydown", pick);
   $("#horizon").onclick = (e) => {
     const h = e.target.dataset?.h;
     if (!h) return;
