@@ -181,6 +181,14 @@ function render() {
   $("#kGoldVal").textContent = `${money(goldVal)} theo giá mua vào`;
   $("#kSjc").textContent = `${nf(L.sjc_buy, 1)} / ${nf(L.sjc_sell, 1)}`;
   $("#kPrem").textContent = `Premium ${pct(L.premium ?? 0)} · TG $${nf(L.xau ?? 0, 0)} ≈ ${nf(L.world ?? 0, 1)} tr`;
+  // Tóm tắt ở Thông tin › Hôm nay
+  $("#sumTotal").textContent = $("#kTotal").textContent;
+  $("#sumDay").innerHTML = $("#kDay").innerHTML;
+  $("#sumGold").textContent = $("#kGold").textContent;
+  $("#sumGoldVal").textContent = $("#kGoldVal").textContent;
+  $("#sumSjc").textContent = $("#kSjc").textContent;
+  $("#sumPrem").textContent = $("#kPrem").textContent;
+  $("#sumCash").textContent = money(st.cash);
   if (st.errors.length) alert(st.errors.join("\n"));
 
   // lộ trình
@@ -195,7 +203,7 @@ function render() {
   else if (g.left === 0) adv = `✅ Tháng này đã bán ${nf(g.soldThisMonth, 2)} lượng, đủ đợt đề xuất (${nf(g.qty, 2)}). Đợt tiếp theo: tháng sau.`;
   else adv = `Đợt tháng này: <b>${nf(g.left, 2)} lượng</b> (≈ ${money(g.left * L.sjc_buy)})${g.soldThisMonth ? `, đã bán ${nf(g.soldThisMonth, 2)}` : ""}. Lý do: ${esc(g.why)}.`;
   $("#glideAdvice").innerHTML = adv;
-  $("#glideHead").innerHTML = `Hồ sơ đang áp dụng: <b>${esc(PROFILES[planCfg().profile]?.name || "")}</b> → giữ <b>${nf(g.gk.keep, 0)} lượng</b>, cần bán <b>${nf(g.remaining, 2)} lượng</b>. Đổi hồ sơ bằng cách bấm thẻ ở mục Định hướng phân bổ.`;
+  $("#glideHead").innerHTML = `Hồ sơ đang áp dụng: <b>${esc(PROFILES[planCfg().profile]?.name || "")}</b> → giữ <b>${nf(g.gk.keep, 0)} lượng</b>, cần bán <b>${nf(g.remaining, 2)} lượng</b>. Đổi hồ sơ ở <a href="#info" data-focus="profileCards">Thông tin › Đề xuất</a>.`;
 
   // Lịch bán dự kiến: tháng này theo tín hiệu hiện tại, các tháng sau theo nhịp cơ bản
   const sched = [];
@@ -210,8 +218,10 @@ function render() {
   $("#glideSchedule").innerHTML = g.remaining <= 0 ? "" :
     `<div class="chips">${sched.map((s) => `<span class="sch${s.now ? " now" : ""}${s.pause ? " pause" : ""}"><small>${s.label}</small><b>${s.pause ? "dừng" : nf(s.q, s.q % 1 ? 1 : 0) + " lượng"}</b></span>`).join("")}</div>
      <p class="muted small">Dự kiến hoàn tất: <b>${sched.at(-1)?.label || "—"}</b> (${sched.length} tháng). Các tháng sau tính theo nhịp cơ bản ${gs.tranche} lượng/tháng; khi đến kỳ sẽ tăng/giảm theo premium và giá vàng.</p>`;
-  $("#glideRule").textContent = `Số lượng giữ lại đi theo hồ sơ ở mục Định hướng phân bổ. Quy tắc: ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
+  $("#glideRule").textContent = `Số lượng giữ lại đi theo hồ sơ phân bổ đang chọn. Quy tắc (sửa ở Cá nhân › Dữ liệu & quy tắc): ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
 
+  renderTodo(st, g, L);
+  renderAdjust(st);
   renderLots(st, L);
   renderDeps(st);
   renderTx(st);
@@ -236,12 +246,80 @@ function renderLots(st, L) {
   $("#lotsTable").innerHTML = `<tr><th>Lô</th><th>Ngày mua</th><th>Còn / ban đầu (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Giá trị</th><th>Lãi/lỗ chưa chốt</th></tr>` + rows.join("");
 }
 
+/** Việc cần làm hôm nay: rút ra từ lộ trình bán vàng, tiết kiệm đáo hạn, dữ liệu còn thiếu. */
+function renderTodo(st, g, L) {
+  const items = [], d = today();
+  if (g.remaining > 0) {
+    if (g.qty === 0) items.push({ ic: "⏸", t: "Tạm dừng bán vàng tháng này", s: g.why });
+    else if (g.left > 0) items.push({ act: 1, ic: "↓", t: `Bán ${nf(g.left, 2)} lượng vàng (đợt tháng này, ≈ ${money(g.left * L.sjc_buy)})`, s: g.why, go: ["me", "sellForm", "Ghi bán"] });
+    else items.push({ done: 1, ic: "✓", t: `Đã đủ đợt bán vàng tháng này (${nf(g.soldThisMonth, 2)} lượng)`, s: "Đợt tiếp theo: tháng sau" });
+  }
+  for (const x of st.deps) {
+    const m = depMature(x);
+    if (!x.closed && m <= d) items.push({ act: 1, ic: "₫", t: `Tất toán tiết kiệm ${x.bank} (đáo hạn ${fmtDate(m)})`, s: `Gốc ${money(x.amount)}, sau đó tái tục hoặc phân bổ theo đề xuất`, go: ["assets", "depTable", "Tất toán"] });
+  }
+  const unk = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
+  if (unk > 0) items.push({ act: 1, ic: "?", t: `Nhập giá vốn cho ${nf(unk, 2)} lượng vàng`, s: "Để tính đúng lãi/lỗ", go: ["me", "adjLots", "Nhập"] });
+  if (st.cash >= 1) items.push({ act: 1, ic: "→", t: `Tiền mặt ${money(st.cash)}: giữ phần quỹ khẩn cấp, phân bổ phần còn lại`, s: "Gửi tiết kiệm hoặc giải ngân theo bảng đề xuất", go: ["info", "planTable", "Xem"] });
+  $("#todoHead").textContent = `Việc cần làm hôm nay · ${fmtDate(d)}`;
+  $("#todoList").innerHTML = items.length
+    ? items.map((i) => `<li class="${i.act ? "act" : i.done ? "done" : ""}"><span class="ic">${i.ic}</span><div class="tx">${esc(i.t)}<small>${esc(i.s || "")}</small></div>${i.go ? `<a href="#${i.go[0]}" data-focus="${i.go[1]}">${i.go[2]} ›</a>` : ""}</li>`).join("")
+    : `<li class="done"><span class="ic">✓</span><div class="tx">Không có việc cần làm hôm nay.</div></li>`;
+}
+
+/** Cá nhân › Điều chỉnh tài sản: ô sửa trực tiếp, data-edit="src:id:field" (src = init → S.lots, tx → S.tx). */
+function renderAdjust(st) {
+  const inp = (src, id, field, val, attrs) => `<input ${attrs} value="${esc(val ?? "")}" data-edit="${src}:${id}:${field}">`;
+  $("#adjLots").innerHTML = `<tr><th>Lô</th><th>Ngày mua</th><th>Số lượng (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Ghi chú</th><th>Còn lại</th><th></th></tr>` +
+    st.lots.map((l, i) => `<tr><td>${i + 1}</td>
+      <td>${inp(l.src, l.id, "date", l.date, 'type="date"')}</td>
+      <td>${inp(l.src, l.id, "luong", l.luong, 'type="number" step="0.01" min="0.01"')}</td>
+      <td>${inp(l.src, l.id, "cost", l.cost, 'type="number" step="0.01" min="0" placeholder="?"')}</td>
+      <td>${inp(l.src, l.id, "note", l.note, 'class="wide" maxlength="120"')}</td>
+      <td>${nf(l.rem, 2)}</td>
+      <td><button type="button" class="ghost" ${l.src === "init" ? `data-dellot="${l.id}"` : `data-del="${l.id}"`}>Xóa</button></td></tr>`).join("");
+  $("#adjCashNow").textContent = money(st.cash);
+  const open = st.deps.filter((x) => !x.closed);
+  $("#adjDeps").innerHTML = open.length
+    ? `<tr><th>Ngân hàng</th><th>Ngày gửi</th><th>Số tiền (tr)</th><th>Lãi (%/năm)</th><th>Kỳ hạn (tháng)</th><th></th></tr>` +
+      open.map((x) => `<tr>
+        <td>${inp("tx", x.id, "bank", x.bank, 'class="wide" maxlength="40"')}</td>
+        <td>${inp("tx", x.id, "date", x.date, 'type="date"')}</td>
+        <td>${inp("tx", x.id, "amount", x.amount, 'type="number" step="0.01" min="0.01"')}</td>
+        <td>${inp("tx", x.id, "rate", x.rate, 'type="number" step="0.01" min="0"')}</td>
+        <td>${inp("tx", x.id, "months", x.months, 'type="number" step="1" min="1"')}</td>
+        <td><button type="button" class="ghost" data-del="${x.id}">Xóa</button></td></tr>`).join("")
+    : `<tr><td class="muted">Không có khoản tiết kiệm đang gửi.</td></tr>`;
+}
+
+/** Áp dụng một ô sửa; từ chối nếu làm sai lệch giao dịch đã có. */
+function applyEdit(el) {
+  const [src, id, field] = el.dataset.edit.split(":");
+  const obj = src === "init" ? S.lots.find((l) => l.id === id) : S.tx.find((t) => t.id === id);
+  if (!obj) return;
+  const raw = el.value.trim();
+  let v = ["luong", "cost", "amount", "rate", "months"].includes(field) ? num(raw) : raw;
+  let bad = null;
+  if (["luong", "amount", "months"].includes(field) && !(v > 0)) bad = "Giá trị phải lớn hơn 0.";
+  else if ((field === "cost" || field === "rate") && v != null && v < 0) bad = "Giá trị không được âm.";
+  else if (field === "bank" && !v) bad = "Cần tên ngân hàng.";
+  else if (field === "date" && !v) { if (src === "init") v = null; else bad = "Cần ngày giao dịch."; }
+  if (bad) { alert(bad); render(); return; }
+  const old = obj[field];
+  obj[field] = v;
+  const err = derive().errors;
+  if (err.length) { obj[field] = old; alert("Không điều chỉnh được: " + err.join("; ")); }
+  else save();
+  render();
+}
+
+const depMature = (x) => { const m = new Date(x.date); m.setMonth(m.getMonth() + Number(x.months)); return m.toLocaleDateString("sv-SE"); };
+
 function renderDeps(st) {
   if (!st.deps.length) { $("#depTable").innerHTML = `<tr><td class="muted">Chưa có khoản tiết kiệm nào.</td></tr>`; return; }
   const d = today();
   const rows = st.deps.map((x) => {
-    const mature = new Date(x.date); mature.setMonth(mature.getMonth() + Number(x.months));
-    const m = mature.toLocaleDateString("sv-SE");
+    const m = depMature(x);
     const cur = x.closed ? x.received : depValue(x, d);
     return `<tr><td>${esc(x.bank)}</td><td>${fmtDate(x.date)}</td><td>${x.months} th · ${nf(x.rate, 2)}%</td><td>${money(x.amount)}</td>
       <td class="up">${signed(cur - x.amount)}</td><td>${fmtDate(m)}${!x.closed && m <= d ? " <b>· đáo hạn</b>" : ""}</td>
@@ -353,6 +431,17 @@ function bind() {
     await afterLogin(data.user);
   };
   $("#btnLogout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  $("#pwForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target, msg = $("#pwMsg");
+    if (f.pw.value !== f.pw2.value) { msg.className = "small warn"; msg.textContent = "Hai mật khẩu không khớp."; return; }
+    f.querySelector("button").disabled = true;
+    const { error } = await sb.auth.updateUser({ password: f.pw.value });
+    f.querySelector("button").disabled = false;
+    f.reset();
+    msg.className = error ? "small warn" : "small up";
+    msg.textContent = error ? "Không đổi được mật khẩu: " + error.message : "Đã đổi mật khẩu ✓";
+  };
 
   $("#setupForm").onsubmit = (e) => {
     e.preventDefault();
@@ -392,7 +481,16 @@ function bind() {
     if (addTx(t)) f.reset(), (f.date.value = today());
   };
 
+  $("#adjCashForm").onsubmit = (e) => {
+    e.preventDefault();
+    const f = e.target, diff = num(f.actual.value) - derive().cash;
+    if (Math.abs(diff) < 0.005) { alert("Số dư đã khớp, không cần điều chỉnh."); return; }
+    if (!confirm(`Ghi điều chỉnh tiền mặt ${signed(diff)} để số dư thành ${money(num(f.actual.value))}?`)) return;
+    if (addTx({ type: "cash", date: today(), amount: Math.round(diff * 100) / 100, note: ("Điều chỉnh số dư " + f.note.value.trim()).trim() })) f.reset();
+  };
+
   document.addEventListener("change", (e) => {
+    if (e.target.dataset?.edit) { applyEdit(e.target); return; }
     const k = e.target.dataset?.cost;
     if (!k) return;
     const [src, id] = k.split(":"), v = num(e.target.value);
@@ -401,6 +499,15 @@ function bind() {
   });
 
   document.addEventListener("click", (e) => {
+    const delLot = e.target.dataset?.dellot;
+    if (delLot) {
+      const i = S.lots.findIndex((l) => l.id === delLot);
+      if (i < 0 || !confirm(`Xóa lô vàng ban đầu "${S.lots[i].note || "Lô vàng"}" (${nf(S.lots[i].luong, 2)} lượng)?`)) return;
+      const [lot] = S.lots.splice(i, 1);
+      const err = derive().errors;
+      if (err.length) { S.lots.splice(i, 0, lot); alert("Không xóa được: " + err.join("; ")); return; }
+      save(); render(); return;
+    }
     const del = e.target.dataset?.del, close = e.target.dataset?.close;
     if (del) {
       const t = S.tx.find((x) => x.id === del);
@@ -478,6 +585,7 @@ async function afterLogin(u) {
   $("#login").hidden = true;
   const { data: prof } = await sb.from("profiles").select("username, role").eq("id", u.id).maybeSingle();
   $("#userBox").hidden = false;
+  $("#acctLocal").hidden = true;
   $("#userName").textContent = prof?.username || u.email.split("@")[0];
   $("#userRole").hidden = prof?.role !== "admin";
   const { data, error } = await sb.from("portfolios").select("data").eq("user_id", u.id).maybeSingle();

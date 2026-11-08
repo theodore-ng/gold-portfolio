@@ -293,9 +293,9 @@ function renderPlan(st) {
       ${OPT_KEYS.map((k) => `<tr><td>${LABEL[k]}</td><td>${nf(c.r[k], 2)}%</td><td>${nf(c.v[k], 1)}%</td><td class="tip">${esc(c.notes[k])}</td></tr>`).join("")}</table></div>
     <p class="small"><b>Bước 2 – Tối ưu hóa:</b> chọn tỷ trọng làm U = E(R) − ½·λ·σ² lớn nhất (lợi nhuận đã trừ "chi phí" rủi ro theo mức bạn chấp nhận), với ràng buộc: tiền mặt + tiết kiệm ≥ ${b.liquid[0]}% (quỹ khẩn cấp), vàng ${b.gold[0]}–${b.gold[1]}%, cổ phiếu ≤ ${b.equity[1]}%, vệ tinh ≤ ${b.sat[1]}%.</p>
     <p class="small"><b>Kết quả:</b> ${frontier}.</p>
-    <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở mục Giả định bên dưới.</p>` +
+    <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở <a href="#assets" data-focus="assumeForm">Tài sản › Kỳ vọng › Giả định</a>.</p>` +
     (p.profile !== p.risk ? `<p class="advice small">Bạn đang áp dụng hồ sơ <b>${esc(PROFILES[p.profile].name)}</b>, khác với mức rủi ro bạn chọn (${esc(PROFILES[p.risk].name)}). <button type="button" class="ghost" data-apply-rec>Áp dụng đề xuất</button></p>` : "");
-  $("#planNote").textContent = `Bảng trên là các bước điều chỉnh để danh mục khớp với hồ sơ ${PROFILES[p.profile].name}. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo lộ trình ở trên.`;
+  $("#planNote").textContent = `Bảng trên là các bước điều chỉnh để danh mục khớp với hồ sơ ${PROFILES[p.profile].name}. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo lộ trình ở Thông tin › Hôm nay.`;
 
   const { profile, ...rest } = p;
   const cardKey = JSON.stringify([cur, rest, S.settings.minKeep, P.latest.premium, c.r]);
