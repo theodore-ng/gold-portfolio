@@ -1,11 +1,23 @@
 "use strict";
-/* Quỹ Vàng: theo dõi danh mục vàng/tiền mặt/tiết kiệm và lộ trình bán vàng.
+/* Quản lý tài sản (trước đây: Quỹ Vàng): theo dõi danh mục vàng/tiền mặt/tiết kiệm/chứng khoán và lộ trình bán vàng.
    Dữ liệu cá nhân chỉ nằm trong localStorage của trình duyệt. Đơn vị tiền: triệu VND. */
 
 const KEY = "quyvang_v1";
 const PRICE_URLS = ["https://raw.githubusercontent.com/theodore-ng/gold-portfolio/main/data/prices.json", "data/prices.json"];
 const PNJ_URL = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00";
 const DEFAULT_SETTINGS = { minKeep: 0, dcaMonths: 12, tranche: 1, extra: 1, premHigh: 10, premLow: 3, xauConfirm: 4450, xauSupport: 3900 };
+
+/* Loại vàng: định giá theo giá mua vào tương ứng; "khác" dùng giá người dùng nhập (tr/lượng). */
+const GOLD_KINDS = { sjc: "SJC miếng", ring: "Nhẫn 9999", other: "Khác (nhập giá)" };
+/* Chứng khoán & tài sản khác (S.sec): giá theo đồng/đơn vị (unit 1e6 → triệu), riêng "other" nhập theo triệu.
+   cls = lớp tài sản trong phân bổ (plan.js); "other" không tham gia phân bổ. */
+const SEC_TYPES = {
+  stock: { name: "Cổ phiếu", cls: "sat", unit: 1e6 },
+  etf: { name: "ETF", cls: "equity", unit: 1e6 },
+  fund: { name: "Chứng chỉ quỹ", cls: null, unit: 1e6 },
+  bond: { name: "Trái phiếu", cls: "bond", unit: 1e6 },
+  other: { name: "Tài sản khác", cls: "other", unit: 1 },
+};
 
 let S = null;          // trạng thái người dùng
 let P = null;          // giá: {updated, latest, history[]}
@@ -81,6 +93,46 @@ const priceOn = (d) => {
   return best || P.history[0];
 };
 
+/* ---------- định giá theo loại tài sản ---------- */
+function goldPx(l, p) {
+  if (l.kind === "ring") return p.ring_buy ?? p.sjc_buy * ((P.latest.ring_buy ?? P.latest.sjc_buy) / P.latest.sjc_buy);
+  if (l.kind === "other") return l.price ?? l.cost ?? p.sjc_buy;
+  return p.sjc_buy;
+}
+const goldValue = (lots, p) => lots.reduce((s, l) => s + l.rem * goldPx(l, p), 0);
+
+/** Giá tự động từ data/invest.json (VNDirect, fmarket), đồng/đơn vị; null nếu mã không có trong dữ liệu. */
+function autoPx(h) {
+  if (typeof INV === "undefined" || !INV || !h.code) return null;
+  const c = h.code.toUpperCase(), f = (list) => list?.find((x) => x.code === c);
+  if (h.type === "stock" || h.type === "etf") return (f(INV.stocks) || f(INV.etfs))?.price ?? null;
+  if (h.type === "fund") return (f(INV.equityFunds) || f(INV.bondFunds))?.nav ?? null;
+  return null;
+}
+/** Giá đang dùng: nhập tay > tự động > giá vốn (trái phiếu, tài sản khác). */
+function secPx(h) {
+  if (h.price != null) return { p: h.price, src: "tay" };
+  const a = autoPx(h);
+  if (a != null) return { p: a, src: "tự động" };
+  if (h.cost != null) return { p: h.cost, src: "giá vốn" };
+  return { p: 0, src: null };
+}
+const secQty = (h) => (h.type === "other" ? 1 : h.qty || 0);
+const secValue = (h) => (secQty(h) * secPx(h).p) / SEC_TYPES[h.type].unit;
+const secGain = (h) => (h.cost == null ? null : (secQty(h) * (secPx(h).p - h.cost)) / SEC_TYPES[h.type].unit);
+function secClass(h) {
+  if (h.type !== "fund") return SEC_TYPES[h.type].cls;
+  if (h.fclass) return h.fclass;
+  const c = (h.code || "").toUpperCase();
+  return typeof INV !== "undefined" && INV?.bondFunds?.some((x) => x.code === c) ? "bond" : "equity";
+}
+/** Giá trị chứng khoán & tài sản khác theo lớp; chỉ tính mã đã mua trước/đúng ngày `d` (không có lịch sử giá: dùng giá hiện tại). */
+function secMix(d = "9999-12-31") {
+  const m = { bond: 0, equity: 0, sat: 0, other: 0 };
+  for (const h of S.sec || []) if (!h.date || h.date <= d) m[secClass(h)] += secValue(h);
+  return m;
+}
+
 /* ---------- tính toán danh mục ---------- */
 const txSorted = () => [...S.tx].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.seq - b.seq));
 
@@ -97,7 +149,7 @@ function derive(upto = "9999-12-31") {
   for (const t of txSorted()) {
     if (t.date > upto) break;
     if (t.type === "buy") {
-      lots.push({ id: t.id, date: t.date, luong: t.luong, rem: t.luong, cost: t.cost, note: t.note, src: "tx" });
+      lots.push({ id: t.id, date: t.date, luong: t.luong, rem: t.luong, cost: t.cost, note: t.note, kind: t.kind, price: t.price, src: "tx" });
       if (t.fromCash) cash -= t.luong * (t.cost || 0);
     } else if (t.type === "sell") {
       let q = t.luong, pnl = 0, unknown = 0;
@@ -112,7 +164,7 @@ function derive(upto = "9999-12-31") {
       cash += t.luong * t.price; realized += pnl; unknownSold += unknown;
       sales.push({ ...t, pnl, unknown });
     } else if (t.type === "dep_open") {
-      cash -= t.amount;
+      if (!t.ext) cash -= t.amount; // ext: sổ đã có từ trước, không trừ tiền mặt
       deps[t.id] = { ...t, closed: null };
     } else if (t.type === "dep_close") {
       const dep = deps[t.depId];
@@ -132,8 +184,8 @@ function derive(upto = "9999-12-31") {
 }
 
 function valueOn(d) {
-  const st = derive(d), p = priceOn(d);
-  return { gold: st.gold * p.sjc_buy, cash: st.cash, dep: st.depVal, est: !!p.est };
+  const st = derive(d), p = priceOn(d), m = secMix(d);
+  return { gold: goldValue(st.lots, p), cash: st.cash, dep: st.depVal, sec: m.bond + m.equity + m.sat + m.other, est: !!p.est };
 }
 
 /* ---------- lộ trình ---------- */
@@ -161,21 +213,24 @@ function glide(st) {
 function render() {
   const st = derive();
   const L = P.latest, d = today();
-  const goldVal = st.gold * L.sjc_buy;
-  const total = goldVal + st.cash + st.depVal;
+  const goldVal = goldValue(st.lots, L);
+  const sm = secMix(), secVal = sm.bond + sm.equity + sm.sat + sm.other;
+  const total = goldVal + st.cash + st.depVal + secVal;
   const prevDate = P.history.length > 1 ? P.history.at(-2).d : d;
-  const prev = valueOn(prevDate), prevTotal = prev.gold + prev.cash + prev.dep;
-  const unreal = st.lots.reduce((s, l) => s + (l.cost == null ? 0 : l.rem * (L.sjc_buy - l.cost)), 0);
+  const prev = valueOn(prevDate), prevTotal = prev.gold + prev.cash + prev.dep + prev.sec;
+  const unreal = st.lots.reduce((s, l) => s + (l.cost == null ? 0 : l.rem * (goldPx(l, L) - l.cost)), 0);
+  const secUnreal = (S.sec || []).reduce((s, h) => s + (secGain(h) ?? 0), 0);
   const basis = st.lots.reduce((s, l) => s + (l.cost == null ? 0 : l.luong * l.cost), 0);
   const unknownHeld = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
-  const pnl = unreal + st.realized + st.interest;
+  const pnl = unreal + st.realized + st.interest + secUnreal;
 
   $("#priceStamp").textContent = `Giá SJC: ${livePNJ ? "trực tiếp PNJ" : "theo file giá"} · vàng TG cập nhật ${P.updated ? new Date(P.updated).toLocaleString("vi-VN") : "—"}`;
   $("#kTotal").textContent = money(total);
   $("#kDay").innerHTML = `<span class="${cls(total - prevTotal)}">${signed(total - prevTotal)} (${pct(prevTotal ? total / prevTotal - 1 : 0)})</span> so với ${fmtDate(prevDate)}`;
   $("#kPnl").innerHTML = `<span class="${cls(pnl)}">${signed(pnl)}</span>`;
   $("#kPnlNote").innerHTML = (basis ? `${pct(pnl / basis)} trên giá vốn vàng · ` : "") +
-    `chưa chốt ${signed(unreal)} · đã chốt ${signed(st.realized)} · lãi TK ${signed(st.interest)}` +
+    `vàng chưa chốt ${signed(unreal)} · đã chốt ${signed(st.realized)} · lãi TK ${signed(st.interest)}` +
+    (S.sec?.length ? ` · chứng khoán & khác ${signed(secUnreal)}` : "") +
     (unknownHeld + st.unknownSold > 0 ? `<br><span class="warn">Chưa tính ${nf(unknownHeld + st.unknownSold, 2)} lượng chưa có giá vốn</span>` : "");
   $("#kGold").textContent = `${nf(st.gold, 2)} lượng`;
   $("#kGoldVal").textContent = `${money(goldVal)} theo giá mua vào`;
@@ -218,30 +273,30 @@ function render() {
   $("#glideSchedule").innerHTML = g.remaining <= 0 ? "" :
     `<div class="chips">${sched.map((s) => `<span class="sch${s.now ? " now" : ""}${s.pause ? " pause" : ""}"><small>${s.label}</small><b>${s.pause ? "dừng" : nf(s.q, s.q % 1 ? 1 : 0) + " lượng"}</b></span>`).join("")}</div>
      <p class="muted small">Dự kiến hoàn tất: <b>${sched.at(-1)?.label || "—"}</b> (${sched.length} tháng). Các tháng sau tính theo nhịp cơ bản ${gs.tranche} lượng/tháng; khi đến kỳ sẽ tăng/giảm theo premium và giá vàng.</p>`;
-  $("#glideRule").textContent = `Số lượng giữ lại đi theo hồ sơ phân bổ đang chọn. Quy tắc (sửa ở Cá nhân › Dữ liệu & quy tắc): ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
+  $("#glideRule").textContent = `Số lượng giữ lại đi theo hồ sơ phân bổ đang chọn. Quy tắc (chỉnh ở mục bên dưới): ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
 
   renderTodo(st, g, L);
   renderAdjust(st);
   renderLots(st, L);
   renderDeps(st);
   renderTx(st);
-  renderAlloc(goldVal, st.cash, st.depVal, total);
+  renderAlloc(goldVal, st.cash, st.depVal, sm, total);
+  renderSec();
   renderCharts(st);
   renderPlan(st);
   renderInvest(st);
   renderInflation(st);
-  $("#cashNow").textContent = money(st.cash);
   sellPreview();
 }
 
 function renderLots(st, L) {
   const rows = st.lots.map((l, i) => {
-    const val = l.rem * L.sjc_buy, gain = l.cost == null ? null : l.rem * (L.sjc_buy - l.cost);
-    return `<tr><td>${i + 1}. ${esc(l.note || "Lô vàng")}</td><td>${fmtDate(l.date)}</td>
+    const px = goldPx(l, L), val = l.rem * px, gain = l.cost == null ? null : l.rem * (px - l.cost);
+    return `<tr><td>${i + 1}. ${esc(l.note || "Lô vàng")} <small class="muted">${GOLD_KINDS[l.kind || "sjc"]}</small></td><td>${fmtDate(l.date)}</td>
       <td>${nf(l.rem, 2)} / ${nf(l.luong, 2)}</td>
       <td><input type="number" step="0.01" min="0" value="${l.cost ?? ""}" placeholder="?" data-cost="${l.src}:${l.id}"></td>
       <td>${money(val)}</td>
-      <td class="${gain == null ? "muted" : cls(gain)}">${gain == null ? "chưa có giá vốn" : `${signed(gain)} (${pct(L.sjc_buy / l.cost - 1)})`}</td></tr>`;
+      <td class="${gain == null ? "muted" : cls(gain)}">${gain == null ? "chưa có giá vốn" : `${signed(gain)} (${pct(px / l.cost - 1)})`}</td></tr>`;
   });
   $("#lotsTable").innerHTML = `<tr><th>Lô</th><th>Ngày mua</th><th>Còn / ban đầu (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Giá trị</th><th>Lãi/lỗ chưa chốt</th></tr>` + rows.join("");
 }
@@ -260,6 +315,8 @@ function renderTodo(st, g, L) {
   }
   const unk = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
   if (unk > 0) items.push({ act: 1, ic: "?", t: `Nhập giá vốn cho ${nf(unk, 2)} lượng vàng`, s: "Để tính đúng lãi/lỗ", go: ["me", "adjLots", "Nhập"] });
+  const noPx = (S.sec || []).filter((h) => { const s = secPx(h).src; return !s || (s === "giá vốn" && h.type !== "bond"); });
+  if (noPx.length) items.push({ act: 1, ic: "?", t: `Nhập giá hiện tại cho ${noPx.map((h) => h.code).join(", ")}`, s: "Không có trong dữ liệu giá tự động, đang tạm tính theo giá vốn", go: ["me", "secAdjust", "Nhập"] });
   if (st.cash >= 1) items.push({ act: 1, ic: "→", t: `Tiền mặt ${money(st.cash)}: giữ phần quỹ khẩn cấp, phân bổ phần còn lại`, s: "Gửi tiết kiệm hoặc giải ngân theo bảng đề xuất", go: ["info", "planTable", "Xem"] });
   $("#todoHead").textContent = `Việc cần làm hôm nay · ${fmtDate(d)}`;
   $("#todoList").innerHTML = items.length
@@ -267,43 +324,132 @@ function renderTodo(st, g, L) {
     : `<li class="done"><span class="ic">✓</span><div class="tx">Không có việc cần làm hôm nay.</div></li>`;
 }
 
-/** Cá nhân › Điều chỉnh tài sản: ô sửa trực tiếp, data-edit="src:id:field" (src = init → S.lots, tx → S.tx). */
+/* ---------- Cá nhân › Tài sản & giao dịch ----------
+   Ô sửa trực tiếp: data-edit="src:id:field" (src = init → S.lots, tx → S.tx, sec → S.sec).
+   Cột: [field, nhãn, kiểu]; kiểu: num | date | text | sel:giá trị=nhãn,... | code (mã, gợi ý từ dữ liệu). */
+const SEC_GROUPS = {
+  eq: { title: "Cổ phiếu & ETF", types: ["stock", "etf"], cols: [["type", "Loại", "sel:stock=Cổ phiếu,etf=ETF"], ["code", "Mã", "code"], ["qty", "Số lượng", "num"], ["cost", "Giá vốn TB (đ)", "num"], ["date", "Ngày mua", "date"], ["broker", "Công ty CK", "text"], ["price", "Giá hiện tại (đ)", "num"]],
+    note: "Giá hiện tại để trống = tự động lấy giá (VNDirect, cập nhật 4 lần/ngày) nếu mã có trong dữ liệu; mã khác cần nhập tay. Cổ phiếu tự chọn tính là Vệ tinh, ETF là Cổ phiếu lõi." },
+  fund: { title: "Chứng chỉ quỹ mở", types: ["fund"], cols: [["code", "Mã quỹ", "code"], ["fclass", "Loại quỹ", "sel:=Tự động,equity=Cổ phiếu,bond=Trái phiếu"], ["qty", "Số CCQ", "num"], ["cost", "NAV lúc mua (đ)", "num"], ["date", "Ngày mua", "date"], ["broker", "Nền tảng", "text"], ["price", "NAV hiện tại (đ)", "num"]],
+    note: "NAV hiện tại để trống = tự động lấy từ fmarket nếu quỹ có trong dữ liệu. Loại quỹ tự động: quỹ trái phiếu → Trái phiếu, còn lại → Cổ phiếu lõi." },
+  bond: { title: "Trái phiếu", types: ["bond"], cols: [["code", "Mã / tên", "text"], ["qty", "Số lượng", "num"], ["cost", "Giá mua (đ)", "num"], ["coupon", "Coupon (%/năm)", "num"], ["date", "Ngày mua", "date"], ["maturity", "Đáo hạn", "date"], ["price", "Giá hiện tại (đ)", "num"]],
+    note: "Giá hiện tại để trống = tính theo giá mua." },
+  other: { title: "Tài sản khác", types: ["other"], cols: [["code", "Tên tài sản", "text"], ["cat", "Loại (BĐS, crypto…)", "text"], ["date", "Ngày mua", "date"], ["cost", "Giá vốn (tr)", "num"], ["price", "Giá trị hiện tại (tr)", "num"]],
+    note: "Tính vào tổng tài sản nhưng không tham gia bài toán phân bổ (không thanh khoản, không có kỳ vọng thị trường). Đơn vị: triệu VND." },
+};
+const NUM_FIELDS = ["luong", "cost", "amount", "rate", "months", "qty", "price", "coupon"];
+const TEXT_REQUIRED = { bank: "Cần tên ngân hàng.", code: "Cần mã / tên tài sản." };
+
+function cell(src, id, field, val, kind, extra = "") {
+  const key = `data-edit="${src}:${id}:${field}"`;
+  if (kind.startsWith("sel:")) {
+    const opts = kind.slice(4).split(",").map((o) => o.split("="));
+    return `<select ${key}>${opts.map(([v, n]) => `<option value="${v}"${(val ?? "") === v ? " selected" : ""}>${n}</option>`).join("")}</select>`;
+  }
+  const attrs = kind === "num" ? 'type="number" step="any" min="0"' : kind === "date" ? 'type="date"' : kind === "code" ? 'list="dlCodes" class="code" maxlength="20"' : 'class="wide" maxlength="120"';
+  return `<input ${attrs} ${extra} value="${esc(val ?? "")}" ${key}>`;
+}
+
+/** Dựng khung các khối chứng khoán (một lần): bảng + form thêm mới tạo từ SEC_GROUPS. */
+function buildSecAdjust() {
+  if ($("#secAdjust").dataset.built) return;
+  $("#secAdjust").dataset.built = 1;
+  $("#secAdjust").innerHTML = Object.entries(SEC_GROUPS).map(([g, G]) => `
+    <details class="card acc" id="acc-${g}">
+      <summary><span>${G.title}</span><b id="accSum-${g}"></b></summary>
+      <div class="tablewrap"><table id="adj-${g}" class="edit"></table></div>
+      <details class="addbox"><summary>+ Thêm: ${G.title}</summary>
+        <form class="grid" data-addsec="${g}">
+          ${G.cols.map(([f, n, k]) => k.startsWith("sel:")
+            ? `<label>${n}<select name="${f}">${k.slice(4).split(",").map((o) => o.split("=")).map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select></label>`
+            : `<label>${n}<input name="${f}" ${k === "num" ? 'type="number" step="any" min="0"' : k === "date" ? 'type="date"' : k === "code" ? 'list="dlCodes" maxlength="20"' : 'maxlength="120"'}${["code", "qty"].includes(f) || (g === "other" && f === "price") ? " required" : ""}></label>`).join("")}
+          <button type="submit">Thêm</button>
+        </form>
+      </details>
+      <p class="muted small">${G.note}</p>
+    </details>`).join("");
+  const codes = typeof INV !== "undefined" && INV ? [...INV.stocks, ...INV.etfs, ...INV.equityFunds, ...INV.bondFunds] : [];
+  $("#dlCodes").innerHTML = codes.map((x) => `<option value="${esc(x.code)}">${esc(x.name || x.index || "")}</option>`).join("");
+}
+
 function renderAdjust(st) {
-  const inp = (src, id, field, val, attrs) => `<input ${attrs} value="${esc(val ?? "")}" data-edit="${src}:${id}:${field}">`;
-  $("#adjLots").innerHTML = `<tr><th>Lô</th><th>Ngày mua</th><th>Số lượng (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Ghi chú</th><th>Còn lại</th><th></th></tr>` +
-    st.lots.map((l, i) => `<tr><td>${i + 1}</td>
-      <td>${inp(l.src, l.id, "date", l.date, 'type="date"')}</td>
-      <td>${inp(l.src, l.id, "luong", l.luong, 'type="number" step="0.01" min="0.01"')}</td>
-      <td>${inp(l.src, l.id, "cost", l.cost, 'type="number" step="0.01" min="0" placeholder="?"')}</td>
-      <td>${inp(l.src, l.id, "note", l.note, 'class="wide" maxlength="120"')}</td>
-      <td>${nf(l.rem, 2)}</td>
-      <td><button type="button" class="ghost" ${l.src === "init" ? `data-dellot="${l.id}"` : `data-del="${l.id}"`}>Xóa</button></td></tr>`).join("");
+  buildSecAdjust();
+  const L = P.latest, del = (attr, id) => `<td><button type="button" class="ghost" ${attr}="${id}">Xóa</button></td>`;
+  // Vàng
+  $("#adjLots").innerHTML = `<tr><th>Loại</th><th>Ngày mua</th><th>Số lượng (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Giá hiện tại (tr/lượng)</th><th>Nơi mua / ghi chú</th><th>Còn lại</th><th>Giá trị</th><th></th></tr>` +
+    st.lots.map((l) => `<tr>
+      <td>${cell(l.src, l.id, "kind", l.kind || "sjc", "sel:" + Object.entries(GOLD_KINDS).map(([k, n]) => `${k}=${n}`).join(","))}</td>
+      <td>${cell(l.src, l.id, "date", l.date, "date")}</td>
+      <td>${cell(l.src, l.id, "luong", l.luong, "num")}</td>
+      <td>${cell(l.src, l.id, "cost", l.cost, "num", 'placeholder="?"')}</td>
+      <td>${l.kind === "other" ? cell(l.src, l.id, "price", l.price, "num", 'placeholder="= giá vốn"') : `<span class="muted">${nf(goldPx(l, L), 1)} (tự động)</span>`}</td>
+      <td>${cell(l.src, l.id, "note", l.note, "text")}</td>
+      <td>${nf(l.rem, 2)}</td><td>${money(l.rem * goldPx(l, L))}</td>
+      ${l.src === "init" ? del("data-dellot", l.id) : del("data-del", l.id)}</tr>`).join("");
+  $("#accSum-gold").textContent = `${nf(st.gold, 2)} lượng · ${money(goldValue(st.lots, L))}`;
+  // Tiền mặt
   $("#adjCashNow").textContent = money(st.cash);
+  $("#accSum-cash").textContent = money(st.cash);
+  // Tiết kiệm
   const open = st.deps.filter((x) => !x.closed);
   $("#adjDeps").innerHTML = open.length
-    ? `<tr><th>Ngân hàng</th><th>Ngày gửi</th><th>Số tiền (tr)</th><th>Lãi (%/năm)</th><th>Kỳ hạn (tháng)</th><th></th></tr>` +
+    ? `<tr><th>Ngân hàng</th><th>Ngày gửi</th><th>Số tiền (tr)</th><th>Lãi (%/năm)</th><th>Kỳ hạn (tháng)</th><th>Đáo hạn</th><th></th></tr>` +
       open.map((x) => `<tr>
-        <td>${inp("tx", x.id, "bank", x.bank, 'class="wide" maxlength="40"')}</td>
-        <td>${inp("tx", x.id, "date", x.date, 'type="date"')}</td>
-        <td>${inp("tx", x.id, "amount", x.amount, 'type="number" step="0.01" min="0.01"')}</td>
-        <td>${inp("tx", x.id, "rate", x.rate, 'type="number" step="0.01" min="0"')}</td>
-        <td>${inp("tx", x.id, "months", x.months, 'type="number" step="1" min="1"')}</td>
-        <td><button type="button" class="ghost" data-del="${x.id}">Xóa</button></td></tr>`).join("")
+        <td>${cell("tx", x.id, "bank", x.bank, "text")}</td>
+        <td>${cell("tx", x.id, "date", x.date, "date")}</td>
+        <td>${cell("tx", x.id, "amount", x.amount, "num")}</td>
+        <td>${cell("tx", x.id, "rate", x.rate, "num")}</td>
+        <td>${cell("tx", x.id, "months", x.months, "num")}</td>
+        <td>${fmtDate(depMature(x))}</td>${del("data-del", x.id)}</tr>`).join("")
     : `<tr><td class="muted">Không có khoản tiết kiệm đang gửi.</td></tr>`;
+  $("#accSum-dep").textContent = `${open.length} sổ · ${money(st.depVal)}`;
+  // Chứng khoán & tài sản khác
+  for (const [g, G] of Object.entries(SEC_GROUPS)) {
+    const list = (S.sec || []).filter((h) => G.types.includes(h.type));
+    $(`#adj-${g}`).innerHTML = list.length
+      ? `<tr>${G.cols.map(([, n]) => `<th>${n}</th>`).join("")}<th>Giá trị</th><th>Lãi/lỗ</th><th></th></tr>` +
+        list.map((h) => {
+          const auto = autoPx(h), gain = secGain(h), px = secPx(h);
+          return `<tr>${G.cols.map(([f, , k]) => `<td>${cell("sec", h.id, f, h[f], k, f === "price" ? `placeholder="${auto != null ? "≈ " + nf(auto, 0) : h.type === "bond" ? "= giá mua" : "nhập giá"}" title="${auto != null ? "Giá tự động, nhập số để ghi đè" : ""}"` : "")}</td>`).join("")}
+            <td>${money(secValue(h))}${px.src ? "" : ' <span class="warn">chưa có giá</span>'}</td>
+            <td class="${gain == null ? "muted" : cls(gain)}">${gain == null ? "—" : `${signed(gain)}${h.cost ? ` (${pct(px.p / h.cost - 1)})` : ""}`}</td>
+            ${del("data-delsec", h.id)}</tr>`;
+        }).join("")
+      : `<tr><td class="muted">Chưa có. Bấm "+ Thêm" bên dưới.</td></tr>`;
+    $(`#accSum-${g}`).textContent = list.length ? `${list.length} mục · ${money(list.reduce((s, h) => s + secValue(h), 0))}` : "";
+  }
+}
+
+/** Tài sản › Chi tiết: bảng chứng khoán & tài sản khác (chỉ xem). */
+function renderSec() {
+  const list = S.sec || [];
+  $("#secCard").hidden = !list.length;
+  if (!list.length) return;
+  const CLS = { bond: "Trái phiếu", equity: "Cổ phiếu lõi", sat: "Vệ tinh", other: "Khác" };
+  $("#secTable").innerHTML = `<tr><th>Mã / tên</th><th>Loại</th><th>Nhóm phân bổ</th><th>Số lượng</th><th>Giá vốn</th><th>Giá hiện tại</th><th>Giá trị</th><th>Lãi/lỗ</th></tr>` +
+    list.map((h) => {
+      const px = secPx(h), gain = secGain(h), tr = h.type === "other";
+      return `<tr><td><b>${esc(h.code)}</b>${h.broker ? ` <small class="muted">${esc(h.broker)}</small>` : ""}</td><td>${SEC_TYPES[h.type].name}</td><td>${CLS[secClass(h)]}</td>
+        <td>${tr ? "—" : nf(h.qty, h.qty % 1 ? 2 : 0)}</td><td>${h.cost == null ? "—" : tr ? money(h.cost) : nf(h.cost, 0)}</td>
+        <td>${px.src ? (tr ? money(px.p) : nf(px.p, 0)) + ` <small class="muted">${px.src}</small>` : '<span class="warn">chưa có giá</span>'}</td>
+        <td>${money(secValue(h))}</td><td class="${gain == null ? "muted" : cls(gain)}">${gain == null ? "—" : signed(gain)}</td></tr>`;
+    }).join("");
 }
 
 /** Áp dụng một ô sửa; từ chối nếu làm sai lệch giao dịch đã có. */
 function applyEdit(el) {
   const [src, id, field] = el.dataset.edit.split(":");
-  const obj = src === "init" ? S.lots.find((l) => l.id === id) : S.tx.find((t) => t.id === id);
+  const obj = src === "init" ? S.lots.find((l) => l.id === id) : src === "sec" ? S.sec.find((h) => h.id === id) : S.tx.find((t) => t.id === id);
   if (!obj) return;
   const raw = el.value.trim();
-  let v = ["luong", "cost", "amount", "rate", "months"].includes(field) ? num(raw) : raw;
+  let v = NUM_FIELDS.includes(field) ? num(raw) : raw;
   let bad = null;
-  if (["luong", "amount", "months"].includes(field) && !(v > 0)) bad = "Giá trị phải lớn hơn 0.";
-  else if ((field === "cost" || field === "rate") && v != null && v < 0) bad = "Giá trị không được âm.";
-  else if (field === "bank" && !v) bad = "Cần tên ngân hàng.";
-  else if (field === "date" && !v) { if (src === "init") v = null; else bad = "Cần ngày giao dịch."; }
+  if (["luong", "amount", "months", "qty"].includes(field) && !(v > 0)) bad = "Giá trị phải lớn hơn 0.";
+  else if (NUM_FIELDS.includes(field) && v != null && (isNaN(v) || v < 0)) bad = "Giá trị không được âm.";
+  else if (TEXT_REQUIRED[field] && !v) bad = TEXT_REQUIRED[field];
+  else if (field === "date" && !v) { if (src === "tx") bad = "Cần ngày giao dịch."; else v = null; }
+  else if ((field === "maturity" || field === "fclass") && !v) v = null;
+  if (field === "code" && obj.type !== "other" && obj.type !== "bond") v = v.toUpperCase();
   if (bad) { alert(bad); render(); return; }
   const old = obj[field];
   obj[field] = v;
@@ -349,8 +495,11 @@ function renderTx(st) {
     : `<tr><td class="muted">Chưa có giao dịch.</td></tr>`;
 }
 
-function renderAlloc(gold, cash, dep, total) {
-  const items = [["Vàng", gold, css("--gold")], ["Tiền mặt", cash, css("--cash")], ["Tiết kiệm", dep, css("--dep")]];
+function renderAlloc(gold, cash, dep, sm, total) {
+  const items = [["Vàng", gold, css("--gold")], ["Tiền mặt", cash, css("--cash")], ["Tiết kiệm", dep, css("--dep")],
+    ["Trái phiếu", sm.bond, css("--bond")], ["Cổ phiếu lõi (ETF, quỹ CP)", sm.equity, css("--equity")],
+    ["Vệ tinh (cổ phiếu tự chọn)", sm.sat, css("--sat")], ["Tài sản khác", sm.other, css("--muted")]]
+    .filter((x, i) => i < 3 || x[1] > 0);
   $("#allocTable").innerHTML = `<tr><th>Lớp</th><th>Giá trị</th><th>Tỷ trọng</th></tr>` +
     items.map(([n, v, c]) => `<tr><td><span class="dot" style="background:${c}"></span>${n}</td><td>${money(v)}</td><td>${nf(total ? (v / total) * 100 : 0, 1)}%</td></tr>`).join("");
   const data = { labels: items.map((x) => x[0]), datasets: [{ data: items.map((x) => Math.max(x[1], 0)), backgroundColor: items.map((x) => x[2]), borderWidth: 0 }] };
@@ -371,7 +520,8 @@ function renderCharts(st) {
     plugins: { legend: { labels: { color: ink, boxWidth: 12 } } },
   };
   const ds = (label, key, color) => ({ label, data: vals.map((v) => v[key]), borderColor: color, backgroundColor: color + "55", fill: true, pointRadius: 0, borderWidth: 1.5, segment: { borderDash: dash } });
-  const fund = { labels, datasets: [ds("Vàng", "gold", css("--gold")), ds("Tiền mặt", "cash", css("--cash")), ds("Tiết kiệm", "dep", css("--dep"))] };
+  const fund = { labels, datasets: [ds("Vàng", "gold", css("--gold")), ds("Tiền mặt", "cash", css("--cash")), ds("Tiết kiệm", "dep", css("--dep")),
+    ...((S.sec || []).length ? [ds("Chứng khoán & khác", "sec", css("--equity"))] : [])] };
   const fundOpt = structuredClone(base);
   fundOpt.scales.y.stacked = true;
   fundOpt.scales.y.ticks.callback = (v) => money(v);
@@ -459,12 +609,15 @@ function bind() {
     if (addTx(t)) { f.luong.value = ""; f.note.value = ""; alert("Đã ghi nhận. Nhớ xuất file sao lưu."); }
   };
 
+  // Gửi tiết kiệm: mới (trừ tiền mặt) hoặc sổ đã có từ trước (ext, không trừ)
   $("#depForm").onsubmit = (e) => {
     e.preventDefault();
-    const f = e.target, amount = num(f.amount.value);
-    if (amount > derive().cash + 1e-9 && !confirm("Số tiền lớn hơn tiền mặt đang có. Vẫn ghi nhận?")) return;
+    const f = e.target, amount = num(f.amount.value), fromCash = f.fromCash.checked;
+    if (fromCash && amount > derive().cash + 1e-9 && !confirm("Số tiền lớn hơn tiền mặt đang có. Vẫn ghi nhận?")) return;
     if (amount > 125) alert("Lưu ý: vượt hạn mức bảo hiểm tiền gửi 125 tr/người/ngân hàng.");
-    if (addTx({ type: "dep_open", date: f.date.value, bank: f.bank.value.trim(), amount, rate: num(f.rate.value), months: num(f.months.value) })) f.amount.value = "";
+    const t = { type: "dep_open", date: f.date.value, bank: f.bank.value.trim(), amount, rate: num(f.rate.value), months: num(f.months.value) };
+    if (!fromCash) t.ext = true;
+    if (addTx(t)) f.amount.value = "";
   };
 
   $("#cashForm").onsubmit = (e) => {
@@ -473,12 +626,17 @@ function bind() {
     if (addTx({ type: "cash", date: f.date.value, amount: num(f.amount.value), note: f.note.value.trim() })) { f.amount.value = ""; f.note.value = ""; }
   };
 
+  // Thêm lô vàng: mua mới (giao dịch, trừ tiền mặt) hoặc vàng đã có từ trước (lô ban đầu)
   $("#lotForm").onsubmit = (e) => {
     e.preventDefault();
-    const f = e.target;
-    const t = { type: "buy", date: f.date.value || today(), luong: num(f.luong.value), cost: num(f.cost.value), note: f.note.value.trim(), fromCash: f.fromCash.checked };
-    if (t.fromCash && t.cost == null) { alert("Cần giá vốn để trừ vào tiền mặt."); return; }
-    if (addTx(t)) f.reset(), (f.date.value = today());
+    const f = e.target, kind = f.kind.value;
+    const lot = { date: f.date.value || null, luong: num(f.luong.value), cost: num(f.cost.value), kind, note: f.note.value.trim() };
+    if (kind === "other") lot.price = num(f.price.value);
+    if (f.fromCash.checked) {
+      if (lot.cost == null) { alert("Cần giá vốn để trừ vào tiền mặt."); return; }
+      if (!addTx({ type: "buy", ...lot, date: lot.date || today(), fromCash: true })) return;
+    } else { S.lots.push({ id: uid(), ...lot }); save(); render(); }
+    f.reset();
   };
 
   $("#adjCashForm").onsubmit = (e) => {
@@ -488,6 +646,19 @@ function bind() {
     if (!confirm(`Ghi điều chỉnh tiền mặt ${signed(diff)} để số dư thành ${money(num(f.actual.value))}?`)) return;
     if (addTx({ type: "cash", date: today(), amount: Math.round(diff * 100) / 100, note: ("Điều chỉnh số dư " + f.note.value.trim()).trim() })) f.reset();
   };
+
+  document.addEventListener("submit", (e) => {
+    const f = e.target.closest("form[data-addsec]");
+    if (!f) return;
+    e.preventDefault();
+    const g = f.dataset.addsec, h = { id: uid(), type: SEC_GROUPS[g].types[0] };
+    for (const [field] of SEC_GROUPS[g].cols) {
+      const raw = f[field].value.trim();
+      h[field] = NUM_FIELDS.includes(field) ? num(raw) : raw || null;
+    }
+    if (h.code && h.type !== "other" && h.type !== "bond") h.code = h.code.toUpperCase();
+    (S.sec ||= []).push(h); save(); render(); f.reset();
+  });
 
   document.addEventListener("change", (e) => {
     if (e.target.dataset?.edit) { applyEdit(e.target); return; }
@@ -499,6 +670,12 @@ function bind() {
   });
 
   document.addEventListener("click", (e) => {
+    const delSec = e.target.dataset?.delsec;
+    if (delSec) {
+      const h = S.sec.find((x) => x.id === delSec);
+      if (!h || !confirm(`Xóa ${SEC_TYPES[h.type].name.toLowerCase()} "${h.code}"?`)) return;
+      S.sec = S.sec.filter((x) => x.id !== delSec); save(); render(); return;
+    }
     const delLot = e.target.dataset?.dellot;
     if (delLot) {
       const i = S.lots.findIndex((l) => l.id === delLot);
@@ -537,7 +714,7 @@ function bind() {
   $("#btnExport").onclick = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: "application/json" }));
-    a.download = `quy-vang-${today()}.json`;
+    a.download = `quan-ly-tai-san-${today()}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -546,7 +723,7 @@ function bind() {
     if (!file) return;
     try {
       const x = JSON.parse(await file.text());
-      if (!validState(x)) throw new Error("file không đúng định dạng Quỹ Vàng");
+      if (!validState(x)) throw new Error("file không đúng định dạng sao lưu của app");
       if (S && !confirm("Thay toàn bộ dữ liệu hiện tại bằng file này?")) return;
       x.settings = { ...DEFAULT_SETTINGS, ...(x.settings || {}) };
       S = x; save(); start();
@@ -572,6 +749,7 @@ function start() {
   $("#setup").hidden = true;
   $("#app").hidden = false;
   S.settings = { ...DEFAULT_SETTINGS, ...(S.settings || {}) };
+  S.sec ||= [];
   const f = $("#setForm");
   for (const k of Object.keys(DEFAULT_SETTINGS)) f[k].value = S.settings[k];
   $("#sellForm").price.value = P.latest.sjc_buy;

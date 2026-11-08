@@ -136,7 +136,8 @@ function optimal(profileKey, total) {
 }
 
 function currentMix(st) {
-  return { gold: st.gold * P.latest.sjc_buy, cash: Math.max(st.cash, 0), dep: st.depVal, bond: 0, equity: 0, sat: 0 };
+  const m = secMix(); // "Tài sản khác" (BĐS, crypto…) không tham gia phân bổ
+  return { gold: goldValue(st.lots, P.latest), cash: Math.max(st.cash, 0), dep: st.depVal, bond: m.bond, equity: m.equity, sat: m.sat };
 }
 
 function targetMix(total, profileKey) {

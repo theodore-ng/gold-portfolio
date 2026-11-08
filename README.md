@@ -1,6 +1,6 @@
-# Quỹ Vàng
+# Quản lý tài sản
 
-Web app cá nhân quản lý danh mục **vàng SJC, tiền mặt, tiết kiệm** và chuyển dần sang danh mục tối ưu theo phương pháp **CFA**, có điều chỉnh theo dữ liệu thị trường Việt Nam và thế giới.
+Web app cá nhân quản lý danh mục **vàng, tiền mặt, tiết kiệm, chứng khoán và tài sản khác** và chuyển dần sang danh mục tối ưu theo phương pháp **CFA**, có điều chỉnh theo dữ liệu thị trường Việt Nam và thế giới.
 
 🔗 **https://theodore-ng.github.io/gold-portfolio/**
 

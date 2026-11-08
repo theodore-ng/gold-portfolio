@@ -39,7 +39,7 @@
     const sec = f?.closest(".subpage[data-sub]");
     if (sec) showSub(sec.closest(".panel"), sec.dataset.sub);
     if (f) {
-      f.closest("details")?.setAttribute("open", "");
+      for (let d = f.closest("details"); d; d = d.parentElement.closest("details")) d.open = true;
       f.scrollIntoView({ behavior: "smooth", block: "start" });
       f.querySelector("input:not([type=date]), select")?.focus({ preventScroll: true });
     } else scrollTo(0, 0);

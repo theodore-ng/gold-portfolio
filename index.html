@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Quỹ Vàng</title>
+<title>Quản lý tài sản</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 1l7 7-7 7-7-7z' fill='%23b8862b'/></svg>">
-<link rel="stylesheet" href="style.css?v=20261108b">
+<link rel="stylesheet" href="style.css?v=20261108c">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261108b"></script>
+<script src="config.js?v=20261108c"></script>
 </head>
 <body>
 <header>
   <div class="headin">
-    <h1>Quỹ Vàng</h1>
+    <h1>Quản lý tài sản</h1>
     <div class="row wrap gap">
       <div id="priceStamp" class="muted small">Đang tải giá…</div>
       <span id="saveState" class="muted small"></span>
@@ -93,6 +93,19 @@
           <p id="glideAdvice" class="advice"></p>
           <div id="glideSchedule" class="sched"></div>
           <p class="muted small" id="glideRule"></p>
+          <details><summary>Chỉnh quy tắc</summary>
+            <form id="setForm" class="grid">
+              <label>Giữ tối thiểu (lượng)<input name="minKeep" type="number" step="1" min="0"></label>
+              <label>Giải ngân cổ phiếu trong (tháng)<input name="dcaMonths" type="number" step="1" min="1"></label>
+              <label>Mỗi đợt (lượng)<input name="tranche" type="number" step="0.5" min="0"></label>
+              <label>Bán thêm (lượng)<input name="extra" type="number" step="0.5" min="0"></label>
+              <label>Premium cao (%)<input name="premHigh" type="number" step="0.5"></label>
+              <label>Premium thấp (%)<input name="premLow" type="number" step="0.5"></label>
+              <label>Vàng TG xác nhận đáy ($)<input name="xauConfirm" type="number"></label>
+              <label>Vàng TG hỗ trợ ($)<input name="xauSupport" type="number"></label>
+              <button type="submit">Lưu quy tắc</button>
+            </form>
+          </details>
         </section>
       </div>
 
@@ -189,7 +202,7 @@
             </div>
           </div>
           <div class="chartbox"><canvas id="chartFund"></canvas></div>
-          <p class="muted small">Nét đứt: giá SJC ước tính (trước khi có số liệu thật, ước tính theo giá thế giới × premium). Giả định đang giữ lượng vàng hiện có từ đầu biểu đồ đến ngày mua/bán đầu tiên.</p>
+          <p class="muted small">Nét đứt: giá SJC ước tính (trước khi có số liệu thật, ước tính theo giá thế giới × premium). Giả định đang giữ lượng vàng hiện có từ đầu biểu đồ đến ngày mua/bán đầu tiên. Chứng khoán và tài sản khác tính từ ngày mua theo giá hiện tại (chưa có lịch sử giá).</p>
         </section>
       </div>
 
@@ -197,13 +210,19 @@
       <div class="subpage" data-sub="holdings" hidden>
         <section class="card">
           <h2>Lô vàng</h2>
-          <p class="muted small">Bán theo thứ tự lô từ trên xuống (FIFO). Sửa giá vốn trực tiếp trong bảng. Sửa số lượng, ngày, ghi chú ở <a href="#me" data-focus="adjLots">Cá nhân › Điều chỉnh tài sản</a>; mua thêm lô ở Cá nhân › Ghi giao dịch.</p>
+          <p class="muted small">Bán theo thứ tự lô từ trên xuống (FIFO). Sửa giá vốn trực tiếp trong bảng. Sửa số lượng, ngày, ghi chú, mua/bán ở <a href="#me" data-focus="adjLots">Cá nhân › Tài sản &amp; giao dịch</a>.</p>
           <div class="tablewrap"><table id="lotsTable"></table></div>
+        </section>
+
+        <section class="card" id="secCard" hidden>
+          <h2>Chứng khoán &amp; tài sản khác</h2>
+          <p class="muted small">Thêm, sửa ở <a href="#me" data-focus="secAdjust">Cá nhân › Tài sản &amp; giao dịch</a>. Giá "tự động" cập nhật 4 lần/ngày.</p>
+          <div class="tablewrap"><table id="secTable"></table></div>
         </section>
 
         <section class="card">
           <h2>Tiết kiệm</h2>
-          <p class="muted small">Sửa ngân hàng, số tiền, lãi suất, kỳ hạn ở <a href="#me" data-focus="adjDeps">Cá nhân › Điều chỉnh tài sản</a>.</p>
+          <p class="muted small">Gửi mới, sửa ngân hàng, số tiền, lãi suất, kỳ hạn ở <a href="#me" data-focus="adjDeps">Cá nhân › Tài sản &amp; giao dịch</a>.</p>
           <div class="tablewrap"><table id="depTable"></table></div>
         </section>
 
@@ -234,120 +253,88 @@
     <!-- ===================== CÁ NHÂN ===================== -->
     <div class="panel" data-tab="me" hidden>
       <div class="subnav" role="tablist">
-        <button type="button" data-sub="record">Ghi giao dịch</button>
-        <button type="button" data-sub="adjust">Điều chỉnh tài sản</button>
-        <button type="button" data-sub="data">Dữ liệu &amp; quy tắc</button>
-        <button type="button" data-sub="account">Tài khoản</button>
+        <button type="button" data-sub="holdings">Tài sản &amp; giao dịch</button>
+        <button type="button" data-sub="account">Người dùng</button>
       </div>
 
-      <!-- Ghi giao dịch -->
-      <div class="subpage" data-sub="record">
-        <section class="grid2">
-          <form class="card" id="sellForm">
-            <h2>Ghi nhận bán vàng</h2>
-            <label>Ngày<input name="date" type="date" required></label>
-            <label>Số lượng (lượng)<input name="luong" type="number" step="0.01" min="0.01" required></label>
-            <label>Giá bán được (tr/lượng)<input name="price" type="number" step="0.01" min="0" required></label>
-            <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: bán tại SJC Q1"></label>
-            <p class="muted small" id="sellPreview"></p>
-            <button type="submit">Ghi nhận bán</button>
-          </form>
+      <!-- Tài sản & giao dịch: mỗi loại tài sản một khối gồm bảng sửa trực tiếp + các giao dịch của loại đó -->
+      <div class="subpage" data-sub="holdings">
+        <p class="muted small">Mỗi loại tài sản một khối: bảng để khớp với số thực tế (sửa xong một ô, bấm ra ngoài là lưu) và các nút giao dịch bên dưới. Thay đổi làm sai lệch giao dịch đã có (vd. giảm số vàng dưới mức đã bán) sẽ bị từ chối.</p>
 
-          <form class="card" id="depForm">
-            <h2>Gửi tiết kiệm từ tiền mặt</h2>
-            <label>Ngân hàng<input name="bank" required maxlength="40" placeholder="VD: Vietcombank"></label>
-            <label>Số tiền (tr VND)<input name="amount" type="number" step="0.01" min="0.01" required></label>
-            <label>Lãi suất (%/năm)<input name="rate" type="number" step="0.01" min="0" value="8.2" required></label>
-            <label>Kỳ hạn (tháng)<select name="months"><option>1</option><option selected>3</option><option>6</option><option>12</option><option>24</option></select></label>
-            <label>Ngày gửi<input name="date" type="date" required></label>
-            <p class="muted small">Bảo hiểm tiền gửi tối đa 125 tr/người/ngân hàng.</p>
-            <button type="submit">Gửi tiết kiệm</button>
-          </form>
-        </section>
-
-        <section class="card">
-          <h2>Tiền mặt</h2>
-          <p>Hiện có: <b id="cashNow"></b></p>
-          <form id="cashForm" class="grid">
-            <label>Ngày<input name="date" type="date" required></label>
-            <label>Số tiền (tr VND, âm = chi ra)<input name="amount" type="number" step="0.01" required></label>
-            <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: thu nhập tháng 11"></label>
-            <button type="submit">Ghi nhận</button>
-          </form>
-        </section>
-
-        <section class="card">
-          <h2>Mua thêm lô vàng</h2>
-          <form id="lotForm" class="grid">
-            <label>Ngày mua<input name="date" type="date"></label>
-            <label>Số lượng (lượng)<input name="luong" type="number" step="0.01" min="0.01" required></label>
-            <label>Giá vốn (tr/lượng)<input name="cost" type="number" step="0.01" min="0"></label>
-            <label>Ghi chú<input name="note" maxlength="120"></label>
-            <label class="check"><input name="fromCash" type="checkbox"> Trừ vào tiền mặt</label>
-            <button type="submit">Thêm lô</button>
-          </form>
-        </section>
-      </div>
-
-      <!-- Điều chỉnh tài sản: sửa trực tiếp dữ liệu đã nhập (sửa xong ô nào lưu ô đó) -->
-      <div class="subpage" data-sub="adjust" hidden>
-        <p class="muted small">Dùng để sửa thông tin đã nhập sai hoặc khớp lại với thực tế. Sửa xong một ô (bấm ra ngoài) là lưu ngay. Thay đổi làm sai lệch giao dịch đã có (vd. giảm số lượng dưới mức đã bán) sẽ bị từ chối.</p>
-
-        <section class="card">
-          <h2>Vàng: các lô đang có</h2>
+        <details class="card acc" id="acc-gold" open>
+          <summary><span>Vàng</span><b id="accSum-gold"></b></summary>
           <div class="tablewrap"><table id="adjLots" class="edit"></table></div>
-          <p class="muted small">Lô thêm từ "Mua thêm lô vàng" mà có đánh dấu trừ tiền mặt thì đổi số lượng/giá vốn sẽ đổi luôn số tiền mặt đã trừ.</p>
-        </section>
+          <details class="addbox"><summary>Bán vàng</summary>
+            <form id="sellForm" class="grid">
+              <label>Ngày<input name="date" type="date" required></label>
+              <label>Số lượng (lượng)<input name="luong" type="number" step="0.01" min="0.01" required></label>
+              <label>Giá bán được (tr/lượng)<input name="price" type="number" step="0.01" min="0" required></label>
+              <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: bán tại SJC Q1"></label>
+              <button type="submit">Ghi nhận bán</button>
+              <p class="muted small full" id="sellPreview"></p>
+            </form>
+          </details>
+          <details class="addbox"><summary>+ Thêm lô vàng</summary>
+            <form id="lotForm" class="grid">
+              <label>Loại<select name="kind"><option value="sjc">SJC miếng</option><option value="ring">Nhẫn 9999</option><option value="other">Khác (nhập giá)</option></select></label>
+              <label>Ngày mua<input name="date" type="date"></label>
+              <label>Số lượng (lượng)<input name="luong" type="number" step="any" min="0.01" required></label>
+              <label>Giá vốn (tr/lượng)<input name="cost" type="number" step="any" min="0"></label>
+              <label>Giá hiện tại (tr/lượng, chỉ loại khác)<input name="price" type="number" step="any" min="0"></label>
+              <label>Nơi mua / ghi chú<input name="note" maxlength="120"></label>
+              <label class="check"><input name="fromCash" type="checkbox"> Mua mới: trừ vào tiền mặt</label>
+              <button type="submit">Thêm lô</button>
+            </form>
+          </details>
+          <p class="muted small">1 chỉ = 0,1 lượng. SJC miếng định giá theo giá mua vào SJC, nhẫn 9999 theo giá mua vào nhẫn (PNJ), loại khác theo giá bạn nhập. Vàng đã có từ trước: bỏ trống "trừ vào tiền mặt". Khi ghi bán vàng, app trừ theo thứ tự lô từ trên xuống.</p>
+        </details>
 
-        <section class="card">
-          <h2>Tiền mặt: khớp số dư thực tế</h2>
-          <p>Theo app: <b id="adjCashNow"></b></p>
-          <form id="adjCashForm" class="grid">
-            <label>Số dư thực tế (tr VND)<input name="actual" type="number" step="0.01" required></label>
-            <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: khớp với tài khoản ngân hàng"></label>
-            <button type="submit">Điều chỉnh</button>
-          </form>
-          <p class="muted small">App ghi một giao dịch tiền mặt bằng phần chênh lệch (ghi chú "Điều chỉnh số dư"), nên lịch sử vẫn đầy đủ và có thể xóa nếu nhầm.</p>
-        </section>
+        <details class="card acc" id="acc-cash">
+          <summary><span>Tiền mặt</span><b id="accSum-cash"></b></summary>
+          <p>Hiện có: <b id="adjCashNow"></b></p>
+          <details class="addbox"><summary>Nạp / rút</summary>
+            <form id="cashForm" class="grid">
+              <label>Ngày<input name="date" type="date" required></label>
+              <label>Số tiền (tr VND, âm = chi ra)<input name="amount" type="number" step="0.01" required></label>
+              <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: thu nhập tháng 11"></label>
+              <button type="submit">Ghi nhận</button>
+            </form>
+          </details>
+          <details class="addbox"><summary>Khớp số dư thực tế</summary>
+            <form id="adjCashForm" class="grid">
+              <label>Số dư thực tế (tr VND)<input name="actual" type="number" step="0.01" required></label>
+              <label>Ghi chú<input name="note" maxlength="120" placeholder="VD: khớp với tài khoản ngân hàng"></label>
+              <button type="submit">Điều chỉnh</button>
+            </form>
+            <p class="muted small">App ghi một giao dịch tiền mặt bằng phần chênh lệch (ghi chú "Điều chỉnh số dư"), nên lịch sử vẫn đầy đủ và có thể xóa nếu nhầm.</p>
+          </details>
+        </details>
 
-        <section class="card">
-          <h2>Tiết kiệm đang gửi</h2>
+        <details class="card acc" id="acc-dep">
+          <summary><span>Tiền gửi tiết kiệm</span><b id="accSum-dep"></b></summary>
           <div class="tablewrap"><table id="adjDeps" class="edit"></table></div>
-        </section>
+          <details class="addbox"><summary>+ Gửi tiết kiệm</summary>
+            <form id="depForm" class="grid">
+              <label>Ngân hàng<input name="bank" required maxlength="40" placeholder="VD: Vietcombank"></label>
+              <label>Ngày gửi<input name="date" type="date" required></label>
+              <label>Số tiền gốc (tr VND)<input name="amount" type="number" step="any" min="0.01" required></label>
+              <label>Lãi suất (%/năm)<input name="rate" type="number" step="any" min="0" value="8.2" required></label>
+              <label>Kỳ hạn (tháng)<select name="months"><option>1</option><option selected>3</option><option>6</option><option>12</option><option>24</option></select></label>
+              <label class="check"><input name="fromCash" type="checkbox" checked> Gửi mới: trừ vào tiền mặt</label>
+              <button type="submit">Gửi tiết kiệm</button>
+            </form>
+          </details>
+          <p class="muted small">Sổ đã gửi từ trước: bỏ tick "trừ vào tiền mặt". Bảo hiểm tiền gửi tối đa 125 tr/người/ngân hàng. Lãi tính đơn, trả cuối kỳ; tất toán ở Tài sản › Chi tiết.</p>
+        </details>
+
+        <div id="secAdjust" class="stack"></div>
+        <datalist id="dlCodes"></datalist>
       </div>
 
-      <!-- Dữ liệu & quy tắc -->
-      <div class="subpage" data-sub="data" hidden>
-        <section class="card">
-          <h2>Sao lưu dữ liệu</h2>
-          <p class="muted small">Xuất file sao lưu sau mỗi lần cập nhật. Ở chế độ cục bộ, xóa dữ liệu trình duyệt là mất toàn bộ.</p>
-          <div class="row wrap gap">
-            <button id="btnExport" type="button">Xuất sao lưu (.json)</button>
-            <label class="filebtn">Nhập sao lưu<input type="file" accept="application/json" data-import></label>
-            <button id="btnReset" type="button" class="danger">Xóa toàn bộ dữ liệu</button>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>Quy tắc lộ trình bán vàng</h2>
-          <form id="setForm" class="grid">
-            <label>Giữ tối thiểu (lượng)<input name="minKeep" type="number" step="1" min="0"></label>
-            <label>Giải ngân cổ phiếu trong (tháng)<input name="dcaMonths" type="number" step="1" min="1"></label>
-            <label>Mỗi đợt (lượng)<input name="tranche" type="number" step="0.5" min="0"></label>
-            <label>Bán thêm (lượng)<input name="extra" type="number" step="0.5" min="0"></label>
-            <label>Premium cao (%)<input name="premHigh" type="number" step="0.5"></label>
-            <label>Premium thấp (%)<input name="premLow" type="number" step="0.5"></label>
-            <label>Vàng TG xác nhận đáy ($)<input name="xauConfirm" type="number"></label>
-            <label>Vàng TG hỗ trợ ($)<input name="xauSupport" type="number"></label>
-            <button type="submit">Lưu quy tắc</button>
-          </form>
-        </section>
-      </div>
-
-      <!-- Tài khoản -->
+      <!-- Người dùng (đăng nhập, mật khẩu, sao lưu dữ liệu) -->
       <div class="subpage" data-sub="account" hidden>
         <section class="card">
-          <h2>Tài khoản</h2>
+          <h2>Người dùng</h2>
           <div id="userBox" hidden>
             <p>Đăng nhập: <b id="userName"></b> <span id="userRole" class="badge" hidden>Quản trị</span></p>
             <p class="muted small">Dữ liệu lưu trong tài khoản và đồng bộ giữa các thiết bị. Chỉ bạn xem được.</p>
@@ -359,7 +346,17 @@
             <p id="pwMsg" class="small"></p>
             <button id="btnLogout" type="button" class="danger">Đăng xuất</button>
           </div>
-          <p id="acctLocal" class="muted">Chế độ cục bộ: không có đăng nhập, dữ liệu chỉ nằm trong trình duyệt này. Hãy xuất file sao lưu thường xuyên (Dữ liệu &amp; quy tắc).</p>
+          <p id="acctLocal" class="muted">Chế độ cục bộ: không có đăng nhập, dữ liệu chỉ nằm trong trình duyệt này. Hãy xuất file sao lưu thường xuyên.</p>
+        </section>
+
+        <section class="card">
+          <h2>Sao lưu dữ liệu</h2>
+          <p class="muted small">Xuất file sao lưu sau mỗi lần cập nhật. Ở chế độ cục bộ, xóa dữ liệu trình duyệt là mất toàn bộ.</p>
+          <div class="row wrap gap">
+            <button id="btnExport" type="button">Xuất sao lưu (.json)</button>
+            <label class="filebtn">Nhập sao lưu<input type="file" accept="application/json" data-import></label>
+            <button id="btnReset" type="button" class="danger">Xóa toàn bộ dữ liệu</button>
+          </div>
         </section>
       </div>
     </div>
@@ -367,8 +364,8 @@
     <!-- ===================== ABOUT ===================== -->
     <div class="panel" data-tab="about" hidden>
       <section class="card about">
-        <h2>Quỹ Vàng</h2>
-        <p>Web app cá nhân quản lý danh mục <b>vàng SJC, tiền mặt, tiết kiệm</b> và chuyển dần sang danh mục tối ưu theo phương pháp <b>CFA</b>, có điều chỉnh theo dữ liệu thị trường Việt Nam và thế giới.</p>
+        <h2>Quản lý tài sản</h2>
+        <p>Web app cá nhân quản lý danh mục <b>vàng, tiền mặt, tiết kiệm, chứng khoán và tài sản khác</b> và chuyển dần sang danh mục tối ưu theo phương pháp <b>CFA</b>, có điều chỉnh theo dữ liệu thị trường Việt Nam và thế giới.</p>
         <p class="muted small">Phiên bản <b id="appVer">—</b> · <a href="https://github.com/theodore-ng/gold-portfolio#readme" target="_blank" rel="noopener">README đầy đủ</a></p>
         <p class="advice small">Công cụ theo dõi và lập kế hoạch, <b>không phải khuyến nghị đầu tư</b>. Kết quả tối ưu và mô phỏng phụ thuộc hoàn toàn vào giả định.</p>
       </section>
@@ -377,7 +374,7 @@
         <h2>Các tab</h2>
         <p class="small"><b>Thông tin</b> · Hôm nay: việc cần làm, tóm tắt tài sản, lộ trình bán vàng. Thị trường: giá vàng, vĩ mô VN, dòng tiền, rủi ro suy thoái, lạm phát. Đề xuất: hồ sơ phân bổ và hướng dẫn giải ngân.</p>
         <p class="small"><b>Tài sản</b> · Tổng quan: lãi/lỗ, phân bổ, giá trị quỹ. Chi tiết: lô vàng, tiết kiệm, lịch sử giao dịch. Kỳ vọng: mô phỏng Monte Carlo theo dự án và giữ nguyên.</p>
-        <p class="small"><b>Cá nhân</b> · Ghi giao dịch (bán/mua vàng, tiết kiệm, tiền mặt), điều chỉnh tài sản đã nhập (lô vàng, số dư tiền mặt, sổ tiết kiệm), sao lưu dữ liệu, quy tắc lộ trình, tài khoản đăng nhập.</p>
+        <p class="small"><b>Cá nhân</b> · Tài sản &amp; giao dịch theo từng loại (vàng SJC/nhẫn, tiền mặt, tiết kiệm, cổ phiếu &amp; ETF, chứng chỉ quỹ, trái phiếu, tài sản khác): khớp số thực tế, mua/bán, nạp/rút, gửi tiết kiệm. Người dùng: đăng nhập, đổi mật khẩu, sao lưu dữ liệu. Quy tắc lộ trình bán vàng chỉnh ngay trong thẻ lộ trình ở Thông tin › Hôm nay.</p>
       </section>
 
       <section class="card about">
@@ -409,10 +406,10 @@
     </div>
   </div>
 </main>
-<script src="plan.js?v=20261108b"></script>
-<script src="macro.js?v=20261108b"></script>
-<script src="invest.js?v=20261108b"></script>
-<script src="app.js?v=20261108b"></script>
-<script src="tabs.js?v=20261108b"></script>
+<script src="plan.js?v=20261108c"></script>
+<script src="macro.js?v=20261108c"></script>
+<script src="invest.js?v=20261108c"></script>
+<script src="app.js?v=20261108c"></script>
+<script src="tabs.js?v=20261108c"></script>
 </body>
 </html>

@@ -59,6 +59,19 @@ main { max-width: 1100px; margin: auto; padding: 8px 16px 40px; display: flex; f
 .todo .tx small { display: block; color: var(--muted); font-size: 12px; }
 .todo a { flex: none; color: var(--accent); font-weight: 600; font-size: 14px; text-decoration: none; white-space: nowrap; }
 .card a { color: var(--accent); }
+/* Khối thu gọn theo loại tài sản */
+.stack { display: flex; flex-direction: column; gap: 14px; }
+details.acc { margin-top: 0; }
+details.acc > summary { display: flex; align-items: center; gap: 10px; list-style: none; color: var(--ink); font-size: 16px; }
+details.acc > summary::-webkit-details-marker { display: none; }
+details.acc > summary b { margin-left: auto; font-size: 14px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+details.acc > summary::after { content: "›"; color: var(--muted); font-size: 22px; line-height: 1; transform: rotate(90deg); transition: transform .15s; }
+details.acc[open] > summary { margin-bottom: 12px; }
+details.acc[open] > summary::after { transform: rotate(-90deg); }
+.addbox { margin-top: 10px; }
+.grid .full { grid-column: 1 / -1; margin: 0; }
+table.edit td select { width: auto; padding: 5px 6px; }
+table.edit td input.code { width: 115px; text-transform: uppercase; }
 table.edit th, table.edit td { text-align: left; }
 table.edit td input { width: 100px; text-align: left; }
 table.edit td input[type=date] { width: 145px; }
