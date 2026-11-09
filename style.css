@@ -194,3 +194,8 @@ table.cme td, table.cme th { font-size: 13px; padding: 5px 8px; } .recbox select
 table.stocks td, table.stocks th { font-size: 13px; padding: 6px 7px; }
 table.wrapfirst td:first-child { white-space: normal; min-width: 180px; }
 .seg button:disabled { opacity: .4; cursor: default; }
+/* Mục con thu gọn trong thẻ Vàng Việt Nam */
+details.gvsec { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+details.gvsec > summary { color: var(--ink); font-size: 15px; }
+details.gvsec[open] > summary { margin-bottom: 10px; }
+#gvSum { white-space: normal; }

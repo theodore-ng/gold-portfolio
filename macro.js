@@ -334,8 +334,79 @@ function goldFactors(g) {
   return out;
 }
 
+/** Sau đỉnh: vàng thế giới đã có đáy chưa? Kiểm tra các mốc xác nhận (giá, xu hướng, USD, lợi suất Mỹ). */
+function goldBottom() {
+  const h = (P?.history || []).filter((x) => x.xau), n = h.length;
+  if (n < 220) return null;
+  const px = h.map((x) => x.xau), last = px[n - 1];
+  let pk = 0, tr;
+  px.forEach((v, i) => { if (v >= px[pk]) pk = i; });
+  tr = pk;
+  for (let i = pk; i < n; i++) if (px[i] <= px[tr]) tr = i;
+  const avg = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  const ma200 = avg(px.slice(-200)), ma200p = avg(px.slice(-220, -20));
+  let up = 0, dn = 0;
+  px.slice(1).forEach((v, i) => { const d = v - px[i], k = i < 14 ? 1 / (i + 1) : 1 / 14; up += (Math.max(d, 0) - up) * k; dn += (Math.max(-d, 0) - dn) * k; });
+  const rsi = dn ? 100 - 100 / (1 + up / dn) : 100;
+  const lowNow = Math.min(...px.slice(-60)), lowPrev = Math.min(...px.slice(-120, -60)), since = n - 1 - tr;
+  const m = M?.markets || {}, money = (v) => "$" + nf(v, 0), checks = [];
+  const add = (name, value, ok) => checks.push({ name, value, ok });
+  add("Đáy giữ được ít nhất 20 phiên", `${since} phiên kể từ đáy ${money(px[tr])} (${fmtDate(h[tr].d)})`, since >= 20);
+  add("Giá trên MA200", `${money(last)} so với ${money(ma200)} (${pct(last / ma200 - 1)})`, last > ma200);
+  add("MA200 ngừng dốc xuống", `20 phiên ${pct(ma200 / ma200p - 1)}`, ma200 >= ma200p);
+  add("Đáy sau cao hơn đáy trước", `đáy 60 phiên gần nhất ${money(lowNow)}, 60 phiên trước đó ${money(lowPrev)}`, lowNow > lowPrev);
+  if (m.dxy?.chg3m != null) add("USD (DXY) quay đầu giảm", `3 tháng ${pct(m.dxy.chg3m)}, 1 tháng ${pct(m.dxy.chg1m)}`, m.dxy.chg3m < 0);
+  if (m.us10y?.chg3m != null) add("Lợi suất Mỹ 10 năm quay đầu giảm", `3 tháng ${m.us10y.chg3m >= 0 ? "+" : "−"}${nf(Math.abs(m.us10y.chg3m), 2)} điểm`, m.us10y.chg3m < 0);
+  const hits = checks.filter((c) => c.ok).length, dd = last / px[pk] - 1;
+  const status = dd > -0.1 ? ["Không trong đợt điều chỉnh", "ok"] : hits >= 5 ? ["Đáy đã được xác nhận", "ok"] : hits >= 3 ? ["Đáy đang hình thành", "warn"] : ["Chưa xác nhận đáy", "alert"];
+  return { h, px, pk, tr, last, dd, bounce: last / px[tr] - 1, ma200, rsi, checks, hits, status };
+}
+
+function renderGoldBottom(g) {
+  const b = goldBottom();
+  if (!b) { $("#gvBottom").innerHTML = '<p class="muted">Chưa đủ lịch sử giá thế giới.</p>'; return null; }
+  const money = (v) => "$" + nf(v, 0), days = Math.round((new Date(b.h[b.tr].d) - new Date(b.h[b.pk].d)) / 864e5);
+  // SJC: đỉnh và đáy theo giá mua vào (giá bán được), có thể lệch với thế giới vì premium
+  const s = g.s, sb = s.map((x) => x.buy);
+  let spk = 0; sb.forEach((v, i) => { if (v >= sb[spk]) spk = i; });
+  let str = spk; for (let i = spk; i < sb.length; i++) if (sb[i] <= sb[str]) str = i;
+  const sjcLine = spk < sb.length - 1
+    ? `SJC mua vào: đỉnh ${nf(sb[spk], 1)} tr (${fmtDate(s[spk].d)}), đáy ${nf(sb[str], 1)} tr (${fmtDate(s[str].d)}), hiện ${nf(sb.at(-1), 1)} tr (${pct(sb.at(-1) / sb[spk] - 1)} so với đỉnh).
+       ${s[str].d < b.h[b.tr].d ? " Thế giới về đáy mới nhưng SJC không giảm theo (premium nới ra), nên SJC có đệm khi thế giới giảm tiếp nhưng sẽ tăng ít hơn khi thế giới hồi." : ""}` : "";
+  $("#gvBottom").innerHTML = `<ul class="pts">
+      <li><b>Đợt này:</b> vàng thế giới đỉnh ${money(b.px[b.pk])} (${fmtDate(b.h[b.pk].d)}), thấp nhất sau đó ${money(b.px[b.tr])} (${pct(b.px[b.tr] / b.px[b.pk] - 1)}, sau ${days} ngày), hiện ${money(b.last)} (hồi ${pct(b.bounce)} từ đáy, ${pct(b.dd)} so với đỉnh). RSI 14 phiên ${nf(b.rsi, 0)}.</li>
+      ${sjcLine ? `<li>${sjcLine}</li>` : ""}
+      <li><b>Lịch sử từ năm 2000:</b> các đợt giảm sau đỉnh nóng sâu 21–44%. Năm 2008 (−30%, 8 tháng) và 2020–22 (−21%) đáy giữ được khi Fed ngừng thắt chặt, 6 tháng sau hồi 25–30%. Năm 2011–15 Fed thắt chặt, USD mạnh: mốc −25% (04/2013) chưa phải đáy, giá giảm thêm 23% và mất 2,5 năm nữa mới có đáy thật.</li>
+    </ul>
+    <div class="tablewrap"><table class="wrapfirst"><tr><th>Mốc xác nhận đáy</th><th>Hiện tại</th><th>Đạt?</th></tr>
+      ${b.checks.map((c) => `<tr><td>${c.name}</td><td>${c.value}</td><td><span class="chip ${c.ok ? "ok" : "alert"}">${c.ok ? "Đạt" : "Chưa"}</span></td></tr>`).join("")}</table></div>
+    <p class="advice"><span class="chip ${b.status[1]}">${b.status[0]}</span> ${b.hits}/${b.checks.length} mốc đạt. ${b.last < b.ma200
+      ? `Mốc quan trọng nhất: giá vượt và giữ trên MA200 (~${money(b.ma200)}). Nếu thủng đáy ${money(b.px[b.tr])} thì đợt giảm còn tiếp.`
+      : `Giá đã trên MA200 (~${money(b.ma200)}); theo dõi đáy ${money(b.px[b.tr])} làm mốc dừng.`} Biên độ (chênh lệch mua–bán, biến động) không dự báo được hướng giá; chỉ dùng để chọn ngày bán khi chênh lệch hẹp.</p>`;
+  return b;
+}
+
+/** Đóng/mở thẻ và từng mục con được nhớ trên máy (khóa quyvang_gv). Mở ra thì vẽ lại biểu đồ cho đúng kích thước. */
+let gvToggleBound = false;
+function bindGoldToggles() {
+  if (gvToggleBound) return;
+  gvToggleBound = true;
+  let st = {};
+  try { st = JSON.parse(localStorage.getItem("quyvang_gv") || "{}"); } catch {}
+  document.querySelectorAll("#goldVN, #goldVN details[data-k]").forEach((d) => {
+    const k = d.dataset.k || "card";
+    if (k in st) d.open = !!st[k];
+    d.addEventListener("toggle", () => {
+      st[k] = d.open;
+      try { localStorage.setItem("quyvang_gv", JSON.stringify(st)); } catch {}
+      if (d.open) { charts.gvPrem?.resize(); charts.gvSpread?.resize(); }
+    });
+  });
+}
+
 function renderGoldVN() {
   if (!$("#goldVN")) return;
+  bindGoldToggles();
   const p = typeof planCfg === "function" ? planCfg() : { premTarget: 3, horizon: 5 };
   const key = JSON.stringify([P?.updated, M?.updated, VNM?.asOf, OUTLOOK?.asOf, p.premTarget, p.horizon, p.rGold]);
   if (key === goldVNKey) return;
@@ -409,6 +480,11 @@ function renderGoldVN() {
     ${ff.map((f) => `<tr><td>${f.name}</td><td>${f.value}</td><td><span class="chip ${dirTxt[f.dir][1]}">${dirTxt[f.dir][0]}</span></td><td class="tip">${f.why}</td></tr>`).join("")}</table></div>
     <p class="advice">Tổng điểm ${score >= 0 ? "+" : "−"}${Math.abs(score)}: <b>${tilt}</b> trong 6–12 tháng tới. ${cmeTxt}</p>`;
   const og = OUTLOOK?.gold;
-  $("#gvPolicy").innerHTML = og
-    ? `<details><summary>${esc(og.title)}</summary>${pointList(og.points)}<p class="muted small">Claude tổng hợp, người dùng duyệt (${fmtDate(OUTLOOK.asOf)}).</p></details>` : "";
+  $("#gvPolicy").hidden = !og;
+  if (og) {
+    $("#gvPolicyT").textContent = og.title;
+    $("#gvPolicyB").innerHTML = `${pointList(og.points)}<p class="muted small">Claude tổng hợp, người dùng duyệt (${fmtDate(OUTLOOK.asOf)}).</p>`;
+  }
+  const b = renderGoldBottom(g);
+  $("#gvSum").innerHTML = `Premium ${pp(L.prem)} · ${b ? b.status[0] : "—"} · điểm ${score >= 0 ? "+" : "−"}${Math.abs(score)}`;
 }

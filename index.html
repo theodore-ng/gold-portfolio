@@ -11,10 +11,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
-<link rel="stylesheet" href="style.css?v=20261109b">
+<link rel="stylesheet" href="style.css?v=20261109c">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261109b"></script>
+<script src="config.js?v=20261109c"></script>
 </head>
 <body>
 <header>
@@ -257,20 +257,21 @@
           <p class="muted small">"Giữ nguyên" = tài sản hiện có, không đổi số lượng (cột "hôm nay" khớp với số thật). "Theo dự án" = hồ sơ đang chọn (Thông tin › Đề xuất). Vàng theo giá SJC mua vào (giá bạn bán được), số lượng quy theo vàng miếng SJC; cổ phiếu lõi và vệ tinh theo VN-Index (chưa gồm cổ tức); quỹ trái phiếu theo lợi nhuận trung vị 12 tháng của các quỹ, tiết kiệm và tiền mặt theo lãi suất, chia theo thời gian. Không tính phí giao dịch, không tái cân bằng giữa kỳ. Là nhìn lại quá khứ, không phải dự báo.</p>
         </section>
 
-        <section class="card" id="goldVN">
-          <h2>Vàng Việt Nam: premium, chênh lệch mua–bán và kỳ vọng</h2>
+        <details class="card acc" id="goldVN">
+          <summary><span>Vàng Việt Nam: premium, chênh lệch mua–bán, vùng đáy và kỳ vọng</span><b id="gvSum"></b></summary>
           <div class="tiles" id="gvTiles"></div>
-          <div class="grid2">
-            <div><h3 class="sub" style="margin-top:0">Premium so với thế giới quy đổi</h3><div class="chartbox short"><canvas id="chartGvPrem"></canvas></div></div>
-            <div><h3 class="sub" style="margin-top:0">Chênh lệch mua–bán (tr/lượng)</h3><div class="chartbox short"><canvas id="chartGvSpread"></canvas></div></div>
-          </div>
-          <h3 class="sub">Cung cầu và độ ổn định</h3>
-          <div id="gvRead"></div>
-          <h3 class="sub">Kỳ vọng khi ghép với vĩ mô và dòng tiền</h3>
-          <div id="gvFactors"></div>
-          <div id="gvPolicy"></div>
+          <details class="gvsec" data-k="charts" open><summary>Biểu đồ premium và chênh lệch mua–bán</summary>
+            <div class="grid2">
+              <div><h3 class="sub" style="margin-top:0">Premium so với thế giới quy đổi</h3><div class="chartbox short"><canvas id="chartGvPrem"></canvas></div></div>
+              <div><h3 class="sub" style="margin-top:0">Chênh lệch mua–bán (tr/lượng)</h3><div class="chartbox short"><canvas id="chartGvSpread"></canvas></div></div>
+            </div>
+          </details>
+          <details class="gvsec" data-k="read"><summary>Cung cầu và độ ổn định</summary><div id="gvRead"></div></details>
+          <details class="gvsec" data-k="bottom"><summary>Sau đỉnh: vàng đã có đáy chưa?</summary><div id="gvBottom"></div></details>
+          <details class="gvsec" data-k="factors"><summary>Kỳ vọng khi ghép với vĩ mô và dòng tiền</summary><div id="gvFactors"></div></details>
+          <details class="gvsec" data-k="policy" id="gvPolicy" hidden><summary id="gvPolicyT"></summary><div id="gvPolicyB"></div></details>
           <p class="muted small">Giá SJC và nhẫn SJC 99,99% (chi nhánh TP.HCM) lấy từ SJC, giá hiện tại từ PNJ; giá thế giới = vàng giao sau COMEX × USD/VND, quy ra lượng (37,5 g). Premium = giá bán trong nước / thế giới quy đổi − 1. Chỉ dùng ngày có giá thật. Đánh giá theo quy tắc đơn giản, có giải thích từng yếu tố; không phải khuyến nghị đầu tư.</p>
-        </section>
+        </details>
       </div>
     </div>
 
@@ -436,10 +437,10 @@
     </div>
   </div>
 </main>
-<script src="plan.js?v=20261109b"></script>
-<script src="macro.js?v=20261109b"></script>
-<script src="invest.js?v=20261109b"></script>
-<script src="app.js?v=20261109b"></script>
-<script src="tabs.js?v=20261109b"></script>
+<script src="plan.js?v=20261109c"></script>
+<script src="macro.js?v=20261109c"></script>
+<script src="invest.js?v=20261109c"></script>
+<script src="app.js?v=20261109c"></script>
+<script src="tabs.js?v=20261109c"></script>
 </body>
 </html>
