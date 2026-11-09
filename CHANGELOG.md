@@ -2,6 +2,11 @@
 
 Phiên bản theo semver: sửa lỗi → patch, thêm tính năng → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
 
+## 1.0.1 – 09/11/2026
+
+- Đổi tên app thành **Quản lý tài chính**.
+- Logo mới: nhân vật tròn đỏ cam há miệng đớp đồng xu vàng (ảnh pixel 24×24, giữ bảng màu cũ).
+
 ## 1.0.0 – 09/11/2026 (bản ổn định đầu tiên)
 
 - **Tên mới:** Quản trị Vốn (Capital Management), logo ảnh pixel tôm hùm cầm đồng xu (`logo.svg`).

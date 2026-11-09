@@ -1,4 +1,4 @@
-# Quản trị Vốn (Capital Management)
+# Quản lý tài chính
 
 <img src="logo.svg" width="64" alt="">
 

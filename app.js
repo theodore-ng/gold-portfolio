@@ -1,5 +1,5 @@
 "use strict";
-/* Quản trị Vốn – Capital Management (trước đây: Quản lý tài sản, Quỹ Vàng): theo dõi danh mục vàng/tiền mặt/tiết kiệm/chứng khoán và lộ trình bán vàng.
+/* Quản lý tài chính (trước đây: Quản trị Vốn, Quản lý tài sản, Quỹ Vàng): theo dõi danh mục vàng/tiền mặt/tiết kiệm/chứng khoán và lộ trình bán vàng.
    Dữ liệu cá nhân chỉ nằm trong localStorage của trình duyệt. Đơn vị tiền: triệu VND. */
 
 const KEY = "quyvang_v1";
