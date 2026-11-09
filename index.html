@@ -5,11 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Quản lý tài sản</title>
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 1l7 7-7 7-7-7z' fill='%23b8862b'/></svg>">
-<link rel="stylesheet" href="style.css?v=20261109a">
+<meta name="theme-color" content="#f2ede2">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 1l7 7-7 7-7-7z' fill='%23b5532c'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<link rel="stylesheet" href="style.css?v=20261109b">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261109a"></script>
+<script src="config.js?v=20261109b"></script>
 </head>
 <body>
 <header>
@@ -177,7 +182,7 @@
         <section class="card">
           <h2>Định hướng phân bổ</h2>
           <div class="pcards" id="profileCards"></div>
-          <p class="muted small">Bấm vào một thẻ để chọn hồ sơ. Số liệu mỗi thẻ là trung vị của 600 kịch bản theo giả định ở Tài sản › Kỳ vọng.</p>
+          <p class="muted small">Bấm vào một thẻ để chọn hồ sơ. Số liệu mỗi thẻ là trung vị của 600 kịch bản theo giả định ở Tài sản › Phân tích.</p>
           <div class="tablewrap"><table id="planTable"></table></div>
           <div id="recBox" class="recbox"></div>
           <p class="muted small" id="planNote"></p>
@@ -194,7 +199,7 @@
     <div class="panel" data-tab="assets" hidden>
       <div class="subnav" role="tablist">
         <button type="button" data-sub="overview">Tổng quan</button>
-        <button type="button" data-sub="future">Kỳ vọng</button>
+        <button type="button" data-sub="future">Phân tích</button>
       </div>
 
       <!-- Tổng quan -->
@@ -226,7 +231,7 @@
         </section>
       </div>
 
-      <!-- Kỳ vọng -->
+      <!-- Phân tích -->
       <div class="subpage" data-sub="future" hidden>
         <section class="card">
           <div class="row between">
@@ -240,6 +245,31 @@
           <p id="cmpBreakeven" class="advice"></p>
           <details><summary>Giả định (chỉnh được)</summary><form id="assumeForm" class="grid"></form></details>
           <p class="muted small">Mô phỏng 2.000 kịch bản theo tháng. "Giữ nguyên" = danh mục hiện tại, không tái cân bằng. "Theo dự án" = phân bổ theo hồ sơ đang chọn (Thông tin › Đề xuất), tái cân bằng mỗi năm, giả định chuyển đổi ngay (thực tế chuyển dần nên kết quả sẽ nằm giữa hai đường). Vùng mờ là khoảng 5%–95% kịch bản. Kết quả phụ thuộc hoàn toàn vào giả định, không phải dự báo.</p>
+        </section>
+
+        <section class="card">
+          <h2>Chuyển dịch quỹ: nếu đã chuyển từ trước</h2>
+          <p class="muted small" style="margin-top:-6px">Lấy đúng tài sản bạn đang giữ, tính ngược về giá trị ở thời điểm trước đó; nếu khi ấy chia số tiền đó theo hồ sơ đang chọn thì hôm nay quỹ khác bao nhiêu.</p>
+          <div class="tablewrap"><table id="btTable"></table></div>
+          <p id="btNote" class="advice"></p>
+          <div class="row between" style="margin-top:14px"><h3 class="sub" style="margin:0">Từng lớp tài sản</h3><div class="seg" id="btWin"></div></div>
+          <div class="tablewrap"><table id="btClass"></table></div>
+          <p class="muted small">"Giữ nguyên" = tài sản hiện có, không đổi số lượng (cột "hôm nay" khớp với số thật). "Theo dự án" = hồ sơ đang chọn (Thông tin › Đề xuất). Vàng theo giá SJC mua vào (giá bạn bán được), số lượng quy theo vàng miếng SJC; cổ phiếu lõi và vệ tinh theo VN-Index (chưa gồm cổ tức); quỹ trái phiếu theo lợi nhuận trung vị 12 tháng của các quỹ, tiết kiệm và tiền mặt theo lãi suất, chia theo thời gian. Không tính phí giao dịch, không tái cân bằng giữa kỳ. Là nhìn lại quá khứ, không phải dự báo.</p>
+        </section>
+
+        <section class="card" id="goldVN">
+          <h2>Vàng Việt Nam: premium, chênh lệch mua–bán và kỳ vọng</h2>
+          <div class="tiles" id="gvTiles"></div>
+          <div class="grid2">
+            <div><h3 class="sub" style="margin-top:0">Premium so với thế giới quy đổi</h3><div class="chartbox short"><canvas id="chartGvPrem"></canvas></div></div>
+            <div><h3 class="sub" style="margin-top:0">Chênh lệch mua–bán (tr/lượng)</h3><div class="chartbox short"><canvas id="chartGvSpread"></canvas></div></div>
+          </div>
+          <h3 class="sub">Cung cầu và độ ổn định</h3>
+          <div id="gvRead"></div>
+          <h3 class="sub">Kỳ vọng khi ghép với vĩ mô và dòng tiền</h3>
+          <div id="gvFactors"></div>
+          <div id="gvPolicy"></div>
+          <p class="muted small">Giá SJC và nhẫn SJC 99,99% (chi nhánh TP.HCM) lấy từ SJC, giá hiện tại từ PNJ; giá thế giới = vàng giao sau COMEX × USD/VND, quy ra lượng (37,5 g). Premium = giá bán trong nước / thế giới quy đổi − 1. Chỉ dùng ngày có giá thật. Đánh giá theo quy tắc đơn giản, có giải thích từng yếu tố; không phải khuyến nghị đầu tư.</p>
         </section>
       </div>
     </div>
@@ -373,7 +403,7 @@
       <section class="card about">
         <h2>Các tab</h2>
         <p class="small"><b>Thông tin</b> · Tin tức: tin kinh tế từ CafeF, Vietstock, VnEconomy, lọc theo chủ đề. Vĩ mô &amp; dòng tiền: nhận định quý, chu kỳ kinh tế, yếu tố dòng tiền, ngành được tập trung đầu tư, rủi ro suy thoái, lạm phát. Đề xuất: việc cần làm, phân tích danh mục, lộ trình bán vàng, hồ sơ phân bổ, hướng dẫn giải ngân.</p>
-        <p class="small"><b>Tài sản</b> · Tổng quan: lãi/lỗ, phân bổ, giá trị quỹ. Kỳ vọng: mô phỏng Monte Carlo theo dự án và giữ nguyên.</p>
+        <p class="small"><b>Tài sản</b> · Tổng quan: lãi/lỗ, phân bổ, giá trị quỹ. Phân tích: mô phỏng Monte Carlo theo dự án và giữ nguyên, và chuyển dịch quỹ (nếu đã chuyển từ 1/6/12 tháng trước).</p>
         <p class="small"><b>Cá nhân</b> · Tài sản &amp; giao dịch theo từng loại (vàng SJC/nhẫn, tiền mặt, tiết kiệm, cổ phiếu &amp; ETF, chứng chỉ quỹ, trái phiếu, tài sản khác): khớp số thực tế, mua/bán, nạp/rút, gửi và tất toán tiết kiệm, lịch sử giao dịch. Người dùng: đăng nhập, đổi mật khẩu, sao lưu dữ liệu. Quy tắc lộ trình bán vàng chỉnh ngay trong thẻ lộ trình ở Thông tin › Đề xuất.</p>
       </section>
 
@@ -406,10 +436,10 @@
     </div>
   </div>
 </main>
-<script src="plan.js?v=20261109a"></script>
-<script src="macro.js?v=20261109a"></script>
-<script src="invest.js?v=20261109a"></script>
-<script src="app.js?v=20261109a"></script>
-<script src="tabs.js?v=20261109a"></script>
+<script src="plan.js?v=20261109b"></script>
+<script src="macro.js?v=20261109b"></script>
+<script src="invest.js?v=20261109b"></script>
+<script src="app.js?v=20261109b"></script>
+<script src="tabs.js?v=20261109b"></script>
 </body>
 </html>

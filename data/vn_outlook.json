@@ -43,6 +43,21 @@
         "src": [{ "name": "CafeF", "url": "https://cafef.vn/bo-cong-thuong-trien-khai-8-giai-phap-bao-dam-cung-ung-dien-nam-2027-2028-188261108071250213.chn" }] }
     ] }
   ],
+  "gold": {
+    "title": "Vàng trong nước: chính sách và cung cầu (đến 09/11/2026)",
+    "points": [
+      { "text": "Nghị định 232/2025 (hiệu lực 10/10/2025) bỏ cơ chế Nhà nước độc quyền sản xuất vàng miếng, chuyển sang cấp phép cho doanh nghiệp và ngân hàng thương mại đủ điều kiện; mua bán vàng từ 20 triệu đồng/ngày phải thanh toán qua tài khoản.",
+        "src": [{"name": "Tạp chí Ngân hàng", "url": "https://tapchinganhang.gov.vn/chinh-thuc-bai-bo-quy-dinh-nha-nuoc-doc-quyen-san-xuat-vang-mieng-xuat-nhap-khau-vang-nguyen-lieu-de-san-xuat-vang-mieng-16453.html"}, {"name": "LSVN", "url": "https://lsvn.vn/mua-ban-vang-20-trieu-trong-ngay-tro-len-phai-thanh-toan-qua-tai-khoan-a163285.html"}] },
+      { "text": "Nguồn cung mới chậm: trong năm 2026 hồ sơ xin nhập khẩu vàng nguyên liệu và sản xuất vàng miếng của nhiều đơn vị vẫn đang được thẩm định; có thời điểm (4/2026) giá trong nước cao hơn thế giới khoảng 20 triệu đồng/lượng. Khi cung thực sự được khơi thông, premium là phần dễ mất nhất.",
+        "src": [{"name": "VnEconomy", "url": "https://vneconomy.vn/bo-nganh-dang-tham-dinh-ho-so-nhap-khau-vang-cua-9-doanh-nghiep.htm"}, {"name": "VnBusiness", "url": "https://vnbusiness.vn/chua-khoi-thong-dong-vang-nhap-khau-gia-vang-sjc-chenh-the-gioi-20-trieu-dongluong.html"}] },
+      { "text": "Giá SJC 'dính': tháng 8/2026 vàng thế giới tăng mạnh trong khi SJC đứng giá hoặc chỉ hạ giá bán, nên chênh lệch với thế giới thu hẹp hơn 84% so với đỉnh; cuối tháng thế giới giảm sau Jackson Hole còn SJC lại tăng, chênh lệch nới ra. Premium chủ yếu hấp thụ biến động của giá thế giới.",
+        "src": [{"name": "VnEconomy", "url": "https://vneconomy.vn/chenh-lech-gia-vang-trong-nuoc-va-the-gioi-thu-hep-hon-84-sau-moc-dinh.htm"}, {"name": "VnBusiness", "url": "https://vnbusiness.vn/premium-vang-sjc-thu-hep-manh-gia-cua-su-khan-hiem-dang-bien-mat.html"}, {"name": "Báo Lào Cai", "url": "https://baolaocai.vn/gia-vang-hom-nay-298-vang-the-gioi-mat-hon-3-sjc-bat-ngo-di-nguoc-chieu-post907204.html"}] },
+      { "text": "Hiện tại: SJC bán ra quanh 141 triệu đồng/lượng; chuyên gia khuyên không mua đuổi, không bán tháo và thận trọng với chênh lệch mua–bán. Áp lực lên vàng thế giới đến từ triển vọng lãi suất Mỹ cao lâu hơn; Ngân hàng Thế giới dự báo giá vàng giảm trong 2027–2028 dù vẫn cao hơn trung bình lịch sử.",
+        "src": [{"name": "CafeF", "url": "https://cafef.vn/gia-vang-lien-tuc-bien-dong-nha-dau-tu-nen-mua-hay-ban-188261107125328467.chn"}, {"name": "VnEconomy", "url": "https://vneconomy.vn/ap-luc-giam-gia-vang-con-lon-do-trien-vong-lai-suat-cao-hon-lau-hon.htm"}, {"name": "VnEconomy", "url": "https://vneconomy.vn/ngan-hang-the-gioi-du-bao-gia-vang-va-gia-bac-giam-trong-nam-2027-va-2028.htm"}] },
+      { "text": "Cần theo dõi: NHNN đề nghị nghiên cứu đánh thuế giao dịch mua bán vàng; nếu áp dụng sẽ làm tăng chi phí mua đi bán lại vàng miếng.",
+        "src": [{"name": "LSVN", "url": "https://lsvn.vn/ngan-hang-nha-nuoc-de-nghi-nghien-cuu-danh-thue-voi-mua-ban-vang-a162979.html"}] }
+    ]
+  },
   "sectors": [
     { "name": "Xây dựng – hạ tầng – vật liệu", "horizon": "Ngắn – trung hạn", "match": ["Đầu tư công", "Xây dựng", "Hạ tầng", "Thép"],
       "why": "Đầu tư công tăng 19,7%, 3 dự án cao tốc 162.393 tỷ, 5 tuyến metro TP.HCM; hai tháng cuối năm thường là đợt giải ngân dồn.",

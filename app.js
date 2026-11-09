@@ -38,6 +38,7 @@ const cls = (x) => (x >= 0 ? "up" : "down");
 const fmtDate = (d) => (d ? d.split("-").reverse().join("/") : "—");
 const num = (v) => (v === "" || v == null ? null : Number(v));
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+if (window.Chart) Chart.defaults.font.family = '"Be Vietnam Pro", system-ui, sans-serif';
 const daysBetween = (a, b) => (new Date(b) - new Date(a)) / 864e5;
 
 /* ---------- lưu trữ: Supabase (nếu đã cấu hình) hoặc trình duyệt ---------- */

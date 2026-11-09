@@ -266,3 +266,149 @@ function bindMacro() {
     renderFlows();
   };
 }
+
+/* ---------- Vàng Việt Nam: premium so với thế giới, chênh lệch mua–bán, cung cầu, độ ổn định, kỳ vọng (Tài sản › Phân tích) ---------- */
+let goldVNKey = null;
+const median = (a) => { const s = [...a].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+const stdev = (a) => { const n = a.length; if (n < 2) return null; const m = a.reduce((s, x) => s + x, 0) / n; return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (n - 1)); };
+
+/** Chuỗi ngày có giá thật (không ước tính). prem = giá bán / thế giới quy đổi − 1 (cách báo chí VN hay tính). */
+function goldSeries() {
+  return (P?.history || []).filter((h) => h.est === false && h.world && h.sjc_buy && h.sjc_sell).map((h) => ({
+    d: h.d, buy: h.sjc_buy, w: h.world, prem: h.sjc_sell / h.world - 1,
+    ring: h.ring_sell ? h.ring_sell / h.world - 1 : null, sp: h.sjc_sell - h.sjc_buy, spR: h.ring_sell && h.ring_buy ? h.ring_sell - h.ring_buy : null,
+  }));
+}
+
+function goldStats() {
+  const s = goldSeries();
+  if (s.length < 30) return null;
+  const last = s[s.length - 1];
+  const ago = (days) => { const t = new Date(last.d); t.setDate(t.getDate() - days); const k = t.toISOString().slice(0, 10); return s.filter((x) => x.d <= k).pop(); };
+  const y1 = s.filter((x) => x.d >= (ago(365)?.d || s[0].d));
+  const prems = y1.map((x) => x.prem), pctl = prems.filter((x) => x <= last.prem).length / prems.length;
+  const rets = (k, n) => { const t = s.slice(-n - 1); return t.slice(1).map((x, i) => Math.log(x[k] / t[i][k])); };
+  const rs = rets("buy", 120), rw = rets("w", 120);
+  const ms = rs.reduce((a, b) => a + b, 0) / rs.length, mw = rw.reduce((a, b) => a + b, 0) / rw.length;
+  const cov = rs.reduce((a, x, i) => a + (x - ms) * (rw[i] - mw), 0), varW = rw.reduce((a, x) => a + (x - mw) ** 2, 0);
+  const p30 = ago(30);
+  return {
+    s, last, pctl, premMed: median(prems), premMin: Math.min(...prems), premMax: Math.max(...prems),
+    dPrem30: p30 ? last.prem - p30.prem : null, spMed: median(y1.map((x) => x.sp)),
+    volS: stdev(rets("buy", 60)) * Math.sqrt(252), volW: stdev(rets("w", 60)) * Math.sqrt(252),
+    beta: varW ? cov / varW : null, premSd90: stdev(s.slice(-90).map((x) => x.prem)),
+  };
+}
+
+/** Yếu tố cho giá vàng SJC tính bằng VND. +1 = thuận (hỗ trợ giá), −1 = nghịch. */
+function goldFactors(g) {
+  const out = [], m = M?.markets || {}, add = (name, value, dir, why) => out.push({ name, value, dir, why });
+  if (m.gold?.vsMa200 != null) add("Vàng thế giới so với MA200", pct(m.gold.vsMa200), m.gold.vsMa200 > 0.02 ? 1 : m.gold.vsMa200 < -0.02 ? -1 : 0,
+    `Xu hướng dài hạn của giá gốc; 3 tháng ${pct(m.gold.chg3m)}.`);
+  add("Premium so với 1 năm", `${nf(g.last.prem * 100, 1)}% (trung vị ${nf(g.premMed * 100, 1)}%)`, g.pctl >= 0.75 ? -1 : g.pctl <= 0.25 ? 1 : 0,
+    g.pctl >= 0.75 ? "Vùng cao: dư địa co lại lớn khi cung được nới hoặc thế giới tăng mà SJC đứng giá."
+      : g.pctl <= 0.25 ? "Vùng thấp: rủi ro co thêm ít, có thể bật lại nếu cầu dồn nén." : "Vùng giữa của 1 năm.");
+  if (g.dPrem30 != null) add("Xu hướng premium 30 ngày", `${g.dPrem30 >= 0 ? "+" : "−"}${nf(Math.abs(g.dPrem30 * 100), 1)} điểm`, g.dPrem30 > 0.02 ? 1 : g.dPrem30 < -0.02 ? -1 : 0,
+    g.dPrem30 > 0.02 ? "Cầu trong nước mạnh lên so với thế giới." : g.dPrem30 < -0.02 ? "Cầu trong nước yếu đi hoặc cung tăng." : "Đi ngang.");
+  const spR = g.last.sp / g.spMed;
+  add("Chênh lệch mua–bán SJC", `${nf(g.last.sp, 1)} tr (trung vị ${nf(g.spMed, 1)} tr)`, spR > 1.3 ? -1 : 0,
+    spR > 1.3 ? "Giãn: tiệm hạ giá mua vào để phòng rủi ro, bán ra lúc này chịu thiệt." : "Bình thường.");
+  if (m.usdvnd?.chg3m != null) add("Tỷ giá USD/VND 3 tháng", pct(m.usdvnd.chg3m), m.usdvnd.chg3m > 0.01 ? 1 : m.usdvnd.chg3m < -0.01 ? -1 : 0,
+    "VND mất giá đẩy giá vàng quy VND lên; VND mạnh lên thì ngược lại.");
+  if (m.dxy?.chg3m != null) add("USD toàn cầu (DXY) 3 tháng", pct(m.dxy.chg3m), m.dxy.chg3m > 0.02 ? -1 : m.dxy.chg3m < -0.02 ? 1 : 0, "USD mạnh thường đè giá vàng thế giới.");
+  if (m.us10y?.chg3m != null) add("Lợi suất Mỹ 10 năm 3 tháng", `${m.us10y.chg3m >= 0 ? "+" : "−"}${nf(Math.abs(m.us10y.chg3m), 2)} điểm`,
+    m.us10y.chg3m > 0.15 ? -1 : m.us10y.chg3m < -0.15 ? 1 : 0, "Lợi suất tăng làm tăng chi phí cơ hội của việc giữ vàng (không sinh lãi).");
+  const dep = vn("deposit"), cpi = vn("cpiYoy");
+  if (dep && cpi) {
+    const r = dep.value - cpi.value;
+    add("Lãi suất thực tiết kiệm VN", `${nf(r, 1)}%`, r > 2 ? -1 : r < 0 ? 1 : 0,
+      r > 2 ? "Gửi tiết kiệm có lãi thực cao: cạnh tranh với vàng." : r < 0 ? "Lãi thực âm: tiền tìm đến vàng." : "Trung tính.");
+  }
+  const ph = cyclePhase();
+  if (ph) {
+    const infl = ph.key === "overheat" || ph.key === "stagflation";
+    add("Pha chu kỳ trong nước", ph.name, infl ? 1 : ph.key === "recovery" ? -1 : 0,
+      infl ? "Lạm phát đang tăng: hàng hóa và vàng thường được ưa chuộng (Investment Clock)." : ph.key === "recovery" ? "Tăng trưởng không lạm phát: cổ phiếu hút tiền hơn vàng." : "Trung tính với vàng.");
+  }
+  if (m.vix) add("Tâm lý trú ẩn (VIX)", nf(m.vix.last, 1), m.vix.last > 20 ? 1 : 0, m.vix.last > 20 ? "Thị trường lo ngại: nhu cầu trú ẩn hỗ trợ vàng." : "Bình thường.");
+  return out;
+}
+
+function renderGoldVN() {
+  if (!$("#goldVN")) return;
+  const p = typeof planCfg === "function" ? planCfg() : { premTarget: 3, horizon: 5 };
+  const key = JSON.stringify([P?.updated, M?.updated, VNM?.asOf, OUTLOOK?.asOf, p.premTarget, p.horizon, p.rGold]);
+  if (key === goldVNKey) return;
+  goldVNKey = key;
+  const g = goldStats();
+  if (!g) { $("#gvTiles").innerHTML = '<p class="muted">Chưa đủ lịch sử giá thật để phân tích.</p>'; return; }
+  const L = g.last, pp = (x) => `${x >= 0 ? "" : "−"}${nf(Math.abs(x * 100), 1)}%`;
+  const level = g.pctl >= 0.75 ? "cao" : g.pctl <= 0.25 ? "thấp" : "trung bình";
+  const shrink = (1 + p.premTarget / 100) / (L.buy / L.w) - 1;
+  const spR = L.sp / g.spMed;
+  // Độ ổn định: chênh lệch mua–bán, biến động SJC, độ dao động của premium
+  const bad = (spR > 1.3) + (g.volS > 0.25) + (g.premSd90 > 0.04);
+  const stab = bad === 0 ? ["Ổn định", "ok"] : bad === 1 ? ["Trung bình", "warn"] : ["Kém ổn định", "alert"];
+  const tile = (name, val, note) => `<div class="tile"><span>${name}</span><b>${val}</b><small>${note}</small></div>`;
+  $("#gvTiles").innerHTML =
+    tile("Premium SJC so với thế giới", pp(L.prem), `≈ ${nf(L.prem * L.w, 1)} tr/lượng · mức ${level} của 1 năm (trung vị ${pp(g.premMed)})`) +
+    tile("Premium vàng nhẫn", L.ring != null ? pp(L.ring) : "—", "nhẫn SJC 99,99%, giá bán so với thế giới") +
+    tile("Chênh lệch mua–bán SJC", `${nf(L.sp, 1)} tr`, `${nf((L.sp / (L.buy + L.sp)) * 100, 1)}% giá bán · trung vị 1 năm ${nf(g.spMed, 1)} tr`) +
+    tile("Chênh lệch mua–bán nhẫn", L.spR != null ? `${nf(L.spR, 1)} tr` : "—", "mua vào rồi bán ra ngay thì mất khoản này") +
+    tile("Biến động 60 phiên (năm hóa)", pp(g.volS), `SJC mua vào · thế giới quy đổi ${pp(g.volW)}`) +
+    tile("Độ bám giá thế giới (beta)", g.beta != null ? nf(g.beta, 2) : "—", "120 phiên; 1 = đi đúng theo thế giới") +
+    tile(`Nếu premium co về ${nf(p.premTarget, 0)}%`, pp(shrink), "giá SJC mua vào, khi vàng thế giới đứng yên");
+
+  const lab = g.s.map((x) => x.d), ink = css("--muted"), grid = css("--line");
+  const opt = (fmt) => ({
+    maintainAspectRatio: false, animation: false, interaction: { mode: "index", intersect: false },
+    scales: { x: { ticks: { color: ink, maxTicksLimit: 7, callback: (v, i) => `${lab[i].slice(5, 7)}/${lab[i].slice(2, 4)}` }, grid: { display: false } },
+      y: { ticks: { color: ink, callback: fmt }, grid: { color: grid } } },
+    plugins: { legend: { labels: { color: ink, boxWidth: 12 } }, tooltip: { callbacks: { title: (it) => fmtDate(lab[it[0].dataIndex]) } } },
+  });
+  const ln = (label, data, color, extra = {}) => ({ label, data, borderColor: color, backgroundColor: color, pointRadius: 0, borderWidth: 1.8, spanGaps: true, ...extra });
+  if (charts.gvPrem) charts.gvPrem.destroy();
+  charts.gvPrem = new Chart($("#chartGvPrem"), { type: "line", options: opt((v) => v + "%"), data: { labels: lab, datasets: [
+    ln("SJC miếng", g.s.map((x) => +(x.prem * 100).toFixed(2)), css("--gold")),
+    ln("Nhẫn 99,99%", g.s.map((x) => (x.ring == null ? null : +(x.ring * 100).toFixed(2))), css("--equity")),
+    ln(`Giả định dài hạn ${nf(p.premTarget, 0)}%`, g.s.map(() => p.premTarget), css("--muted"), { borderDash: [5, 4], borderWidth: 1 }),
+  ] } });
+  if (charts.gvSpread) charts.gvSpread.destroy();
+  charts.gvSpread = new Chart($("#chartGvSpread"), { type: "line", options: opt((v) => v + " tr"), data: { labels: lab, datasets: [
+    ln("SJC miếng", g.s.map((x) => +x.sp.toFixed(2)), css("--gold")),
+    ln("Nhẫn 99,99%", g.s.map((x) => (x.spR == null ? null : +x.spR.toFixed(2))), css("--equity")),
+  ] } });
+
+  // Đọc cung cầu và độ ổn định (quy tắc đơn giản, có ghi rõ lý do)
+  const trend = g.dPrem30 == null ? "" : g.dPrem30 > 0.02 ? "đang nới rộng" : g.dPrem30 < -0.02 ? "đang co lại" : "đi ngang";
+  const sd = level === "cao"
+    ? (trend === "đang nới rộng"
+      ? "Cầu trong nước vượt cung và chênh lệch còn đang nới: người mua đang trả giá cao hơn thế giới nhiều. Rủi ro lớn nhất là premium co lại khi nguồn cung được nới (cấp phép nhập khẩu, sản xuất vàng miếng)."
+      : "Premium ở vùng cao của 1 năm: phần chênh do chính sách lớn, người giữ SJC có thể lỗ phần này dù vàng thế giới đứng yên.")
+    : level === "thấp" ? "Premium thấp so với 1 năm: giá trong nước sát thế giới, rủi ro co thêm ít; premium có thể bật lại nếu cầu dồn nén quay lại."
+    : "Premium ở vùng giữa của 1 năm: cung cầu trong nước tương đối cân bằng so với giai đoạn trước.";
+  const d30 = g.dPrem30 == null ? "" : `${trend} trong 30 ngày (${g.dPrem30 >= 0 ? "+" : "−"}${nf(Math.abs(g.dPrem30 * 100), 1)} điểm), `;
+  const sticky = g.beta != null && g.beta < 0.6;
+  $("#gvRead").innerHTML = `<ul class="pts">
+    <li><b>Cung cầu:</b> premium ${pp(L.prem)}, ${d30}dao động trong 1 năm từ ${pp(g.premMin)} đến ${pp(g.premMax)}. ${sd}</li>
+    <li><b>Độ bám thế giới:</b> beta ${g.beta != null ? nf(g.beta, 2) : "—"}. ${sticky
+      ? "Giá SJC điều chỉnh chậm hơn thế giới: biến động thế giới đi vào premium trước (thế giới tăng mạnh thì premium co, thế giới giảm thì premium nới), nên premium không chỉ phản ánh cung cầu."
+      : "Giá SJC đi khá sát thế giới trong ngày."}</li>
+    <li><b>Độ ổn định:</b> <span class="chip ${stab[1]}">${stab[0]}</span> chênh lệch mua–bán ${spR > 1.3 ? "giãn" : "bình thường"} (${nf(L.sp, 1)} tr so với trung vị ${nf(g.spMed, 1)} tr), biến động SJC ${pp(g.volS)}/năm so với thế giới ${pp(g.volW)}, premium dao động ${pp(g.premSd90)} trong 90 ngày.</li>
+  </ul>`;
+
+  const ff = goldFactors(g), score = ff.reduce((s, x) => s + x.dir, 0);
+  const tilt = score >= 2 ? "Nghiêng tích cực cho giá vàng SJC" : score <= -2 ? "Nghiêng tiêu cực cho giá vàng SJC" : "Trung tính, phân hóa";
+  const dirTxt = { 1: ["Thuận", "ok"], 0: ["Trung tính", "warn"], "-1": ["Nghịch", "alert"] };
+  let cmeTxt = "";
+  if (typeof cme === "function") {
+    const c = cme(p, p.horizon);
+    cmeTxt = `Kỳ vọng đang dùng cho mô phỏng và tối ưu (CME, ${p.horizon} năm): vàng SJC <b>${nf(c.r.gold, 1)}%/năm</b>, đã trừ phần premium co về ${nf(p.premTarget, 0)}% (chỉnh ở Giả định của mục So sánh).`;
+  }
+  $("#gvFactors").innerHTML = `<div class="tablewrap"><table class="wrapfirst"><tr><th>Yếu tố</th><th>Hiện tại</th><th>Tác động</th><th class="tip">Giải thích</th></tr>
+    ${ff.map((f) => `<tr><td>${f.name}</td><td>${f.value}</td><td><span class="chip ${dirTxt[f.dir][1]}">${dirTxt[f.dir][0]}</span></td><td class="tip">${f.why}</td></tr>`).join("")}</table></div>
+    <p class="advice">Tổng điểm ${score >= 0 ? "+" : "−"}${Math.abs(score)}: <b>${tilt}</b> trong 6–12 tháng tới. ${cmeTxt}</p>`;
+  const og = OUTLOOK?.gold;
+  $("#gvPolicy").innerHTML = og
+    ? `<details><summary>${esc(og.title)}</summary>${pointList(og.points)}<p class="muted small">Claude tổng hợp, người dùng duyệt (${fmtDate(OUTLOOK.asOf)}).</p></details>` : "";
+}

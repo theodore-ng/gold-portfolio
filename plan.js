@@ -294,7 +294,7 @@ function renderPlan(st) {
       ${OPT_KEYS.map((k) => `<tr><td>${LABEL[k]}</td><td>${nf(c.r[k], 2)}%</td><td>${nf(c.v[k], 1)}%</td><td class="tip">${esc(c.notes[k])}</td></tr>`).join("")}</table></div>
     <p class="small"><b>Bước 2 – Tối ưu hóa:</b> chọn tỷ trọng làm U = E(R) − ½·λ·σ² lớn nhất (lợi nhuận đã trừ "chi phí" rủi ro theo mức bạn chấp nhận), với ràng buộc: tiền mặt + tiết kiệm ≥ ${b.liquid[0]}% (quỹ khẩn cấp), vàng ${b.gold[0]}–${b.gold[1]}%, cổ phiếu ≤ ${b.equity[1]}%, vệ tinh ≤ ${b.sat[1]}%.</p>
     <p class="small"><b>Kết quả:</b> ${frontier}.</p>
-    <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở <a href="#assets" data-focus="assumeForm">Tài sản › Kỳ vọng › Giả định</a>.</p>` +
+    <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở <a href="#assets" data-focus="assumeForm">Tài sản › Phân tích › Giả định</a>.</p>` +
     (p.profile !== p.risk ? `<p class="advice small">Bạn đang áp dụng hồ sơ <b>${esc(PROFILES[p.profile].name)}</b>, khác với mức rủi ro bạn chọn (${esc(PROFILES[p.risk].name)}). <button type="button" class="ghost" data-apply-rec>Áp dụng đề xuất</button></p>` : "");
   $("#planNote").textContent = `Bảng trên là các bước điều chỉnh để danh mục khớp với hồ sơ ${PROFILES[p.profile].name}. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo lộ trình bán vàng ở trên.`;
 
@@ -305,6 +305,8 @@ function renderPlan(st) {
   if (cardKey !== profileCardKey) { profileCardKey = cardKey; renderProfileCards(cur, total, p); }
   document.querySelectorAll(".pcard").forEach((c) => c.classList.toggle("on", c.dataset.profile === p.profile));
 
+  renderBacktest(cur, tgt);
+  if (typeof renderGoldVN === "function") renderGoldVN();
   // So sánh: chỉ chạy lại mô phỏng khi đầu vào thay đổi
   const key = JSON.stringify([cur, tgt, p, P.latest.premium]);
   if (key === simKey) return;
@@ -317,6 +319,71 @@ function renderPlan(st) {
     : `Điểm hòa: vàng thế giới cần tăng khoảng <b>${nf(be, 1)}%/năm</b> (trung vị, đã tính premium SJC co về ${nf(p.premTarget, 0)}%) thì giữ nguyên mới bằng dự án sau ${p.horizon} năm. ` +
       (be > p.rGold ? `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, nên theo dự án có lợi thế.` : `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, cao hơn điểm hòa, nên giữ nguyên đang có lợi thế về trung vị nhưng rủi ro tập trung cao hơn.`) +
       ` Để so sánh: 10 năm qua vàng quy VND tăng ~14%/năm, là giai đoạn đặc biệt mạnh.`;
+}
+
+/* ---------- Chuyển dịch quỹ: nếu đã chuyển sang cơ cấu dự án từ 1/6/12 tháng trước ---------- */
+const BT_WINDOWS = [[1, "1 tháng", "chg1m"], [6, "6 tháng", "chg6m"], [12, "1 năm", "chg1y"]];
+const BT_KEYS = ["gold", "cash", "dep", "bond", "equity", "sat"];
+const BT_LABEL = { gold: "Vàng SJC", cash: "Tiền mặt", dep: "Tiết kiệm", bond: "Quỹ trái phiếu", equity: "Cổ phiếu lõi", sat: "Vệ tinh" };
+
+/** Lợi nhuận thực tế của từng lớp trong `months` tháng gần nhất (số thập phân), null nếu thiếu dữ liệu. */
+function pastReturns(months, chgKey, p) {
+  const t = new Date(); t.setMonth(t.getMonth() - months);
+  const d0 = t.toISOString().slice(0, 10), f = months / 12;
+  const h = (P.history || []).filter((x) => x.d <= d0 && x.sjc_buy).pop();
+  const vni = typeof M !== "undefined" ? M?.markets?.vnindex?.[chgKey] ?? null : null;
+  const bond = (typeof INV !== "undefined" && INV?.bondMedian12m) || p.rBond;
+  return {
+    d0, est: !!h?.est,
+    r: { gold: h && P.latest.sjc_buy ? P.latest.sjc_buy / h.sjc_buy - 1 : null, cash: (p.rCash / 100) * f, dep: (depNow(p) / 100) * f,
+      bond: (bond / 100) * f, equity: vni, sat: vni },
+  };
+}
+
+let btWin = 12, btArgs = null;
+function renderBacktest(cur, tgt) {
+  btArgs = [cur, tgt];
+  const p = planCfg();
+  const tot = (m) => BT_KEYS.reduce((s, k) => s + (m[k] || 0), 0);
+  const V = tot(cur), Tt = tot(tgt);
+  const pc = (x) => (x == null ? "—" : (x >= 0 ? "+" : "−") + nf(Math.abs(x * 100), 1) + "%");
+  // Giữ nguyên = đúng tài sản đang giữ, tính ngược về giá trị lúc đó; dự án = giá trị lúc đó chia theo hồ sơ rồi tính tới hôm nay
+  const calc = (w) => {
+    if (!V || BT_KEYS.some((k) => (cur[k] || tgt[k]) && w.r[k] == null)) return null;
+    const past = {}, ps = {}, pe = {};
+    for (const k of BT_KEYS) past[k] = (cur[k] || 0) / (1 + w.r[k]);
+    const V0 = tot(past);
+    for (const k of BT_KEYS) { ps[k] = Tt ? (V0 * (tgt[k] || 0)) / Tt : 0; pe[k] = ps[k] * (1 + (w.r[k] ?? 0)); }
+    return { past, ps, pe, V0, B: tot(pe), sjc0: w.r.gold != null ? P.latest.sjc_buy / (1 + w.r.gold) : null };
+  };
+  const W = BT_WINDOWS.map(([mo, label, key]) => { const w = { mo, label, ...pastReturns(mo, key, p) }; w.c = calc(w); return w; });
+
+  $("#btTable").innerHTML = `<tr><th>Nếu chuyển từ</th><th>Quỹ lúc đó</th><th>Giữ nguyên (hôm nay)</th><th>Theo dự án (hôm nay)</th><th>Chênh lệch</th></tr>` +
+    W.map((w) => {
+      const lab = `${w.label} trước <span class="muted small">(${fmtDate(w.d0)}${w.est ? ", giá vàng ước tính" : ""})</span>`;
+      if (!w.c) return `<tr><td>${lab}</td><td colspan="4" class="muted" style="text-align:center">chưa đủ số liệu</td></tr>`;
+      const { V0, B } = w.c, d = B - V;
+      return `<tr><td>${lab}</td><td>${money(V0)}</td><td>${money(V)} <span class="muted small">${pc(V / V0 - 1)}</span></td>
+        <td>${money(B)} <span class="muted small">${pc(B / V0 - 1)}</span></td><td class="${Math.abs(d) < 0.05 ? "muted" : d > 0 ? "up" : "down"}">${signed(d)}</td></tr>`;
+    }).join("");
+  const last = [...W].reverse().find((w) => w.c);
+  $("#btNote").innerHTML = !last ? "Chưa đủ số liệu thị trường để tính."
+    : `Nếu đã chuyển sang hồ sơ đang chọn từ ${last.label} trước, quỹ hôm nay sẽ ${last.c.B >= V ? "cao" : "thấp"} hơn giữ nguyên khoảng <b>${money(Math.abs(last.c.B - V))}</b>. ` +
+      `Kết quả nhìn lại phụ thuộc mạnh vào diễn biến vàng trong giai đoạn đó, nên dùng để hiểu rủi ro tập trung chứ không để đoán tương lai.`;
+
+  // Cơ cấu từng lớp cho một mốc
+  if (!W.some((w) => w.mo === btWin && w.c)) btWin = last ? last.mo : 12;
+  $("#btWin").innerHTML = W.map((w) => `<button type="button" data-m="${w.mo}" class="${w.mo === btWin ? "on" : ""}"${w.c ? "" : " disabled"}>${w.label}</button>`).join("");
+  $("#btWin").onclick = (e) => { const m = e.target.closest("button[data-m]"); if (!m || m.disabled) return; btWin = Number(m.dataset.m); renderBacktest(...btArgs); };
+  const w = W.find((x) => x.mo === btWin), c = w?.c;
+  if (!c) { $("#btClass").innerHTML = ""; return; }
+  const luong = (v) => (c.sjc0 ? `<br><span class="muted small">${nf(v / c.sjc0, 2)} lượng</span>` : "");
+  const span = (a, b, k) => (a < 0.05 && b < 0.05 ? `<span class="muted">—</span>` : `${money(a)} → ${money(b)}${k === "gold" ? luong(a) : ""}`);
+  const keys = BT_KEYS.filter((k) => cur[k] || tgt[k]);
+  $("#btClass").innerHTML = `<tr><th>Lớp</th><th>Lợi nhuận ${w.label}</th><th>Giữ nguyên: lúc đó → hôm nay</th><th>Theo dự án: lúc đó → hôm nay</th><th>Chênh lệch hôm nay</th></tr>` +
+    keys.map((k) => { const d = c.pe[k] - (cur[k] || 0);
+      return `<tr><td>${BT_LABEL[k]}</td><td>${pc(w.r[k])}</td><td>${span(c.past[k], cur[k] || 0, k)}</td><td>${span(c.ps[k], c.pe[k], k)}</td><td class="${Math.abs(d) < 0.05 ? "muted" : d > 0 ? "up" : "down"}">${signed(d)}</td></tr>`; }).join("") +
+    `<tr><td><b>Tổng</b></td><td></td><td><b>${money(c.V0)} → ${money(V)}</b></td><td><b>${money(c.V0)} → ${money(c.B)}</b></td><td class="${c.B >= V ? "up" : "down"}"><b>${signed(c.B - V)}</b></td></tr>`;
 }
 
 /* ---------- Phân tích danh mục (nút ở Thông tin › Đề xuất): tính trên trình duyệt, không gửi dữ liệu đi đâu ---------- */

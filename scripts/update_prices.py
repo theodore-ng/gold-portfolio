@@ -4,6 +4,7 @@ Không chứa dữ liệu cá nhân. Lần chạy đầu tự điền 1 năm l�
 giá SJC ước tính = thế giới quy đổi × (1 + premium của lần đo thật đầu tiên), đánh dấu est=true.
 """
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -44,6 +45,38 @@ def pnj() -> dict | None:
         return None
 
 
+SJC_URL = "https://sjc.com.vn/GoldPrice/Services/PriceService.ashx"
+SJC_IDS = {"sjc": 1, "ring": 49}  # 1 = SJC 1L/10L/1KG, 49 = nhẫn SJC 99,99% (chi nhánh Hồ Chí Minh)
+
+
+def sjc_history(start, end) -> dict:
+    """Lịch sử giá thật từ SJC: {ngày: {sjc_buy, sjc_sell, ring_buy, ring_sell}} triệu VND/lượng,
+    lấy lần niêm yết cuối mỗi ngày. API chỉ cho xem < 90 ngày mỗi lần nên chia đoạn 60 ngày."""
+    out = {}
+    for key, gid in SJC_IDS.items():
+        a = start
+        while a <= end:
+            b = min(a + timedelta(days=60), end)
+            j = requests.post(SJC_URL, headers=H, timeout=30, data={"method": "GetGoldPriceHistory", "goldPriceId": gid,
+                              "fromDate": a.strftime("%d/%m/%Y"), "toDate": b.strftime("%d/%m/%Y")}).json()
+            if not j.get("success"):
+                raise RuntimeError(j.get("message"))
+            rows = [(int(re.search(r"-?\d+", r["GroupDate"]).group()), r) for r in j["data"] if r.get("BranchName") in (None, "Hồ Chí Minh")]
+            for ts, r in sorted(rows, key=lambda x: x[0]):
+                d = datetime.fromtimestamp(ts / 1000, VN).strftime("%Y-%m-%d")
+                out.setdefault(d, {}).update({f"{key}_buy": round(r["BuyValue"] / 1e6, 2), f"{key}_sell": round(r["SellValue"] / 1e6, 2)})
+            a = b + timedelta(days=1)
+    # SJC chỉ ghi khi đổi giá: ngày không có dòng nào = giữ giá lần niêm yết trước
+    last, d = {}, start
+    while d <= end:
+        k = d.strftime("%Y-%m-%d")
+        last.update(out.get(k, {}))
+        if last:
+            out[k] = dict(last)
+        d += timedelta(days=1)
+    return out
+
+
 def world_luong(xau, fx):
     return round(xau * fx / GRAM_PER_OZ * GRAM_PER_LUONG / 1e6, 2)
 
@@ -66,6 +99,21 @@ def main():
     if p:
         hist[today].update(p, est=False)
 
+    # Ngày còn giá ước tính: thay bằng giá thật từ SJC (để biểu đồ premium/chênh lệch mua–bán có nghĩa)
+    need = sorted(d for d in hist if hist[d].get("est") is not False)
+    if need:
+        try:
+            sjc = sjc_history(datetime.strptime(need[0], "%Y-%m-%d"), datetime.now(VN).replace(tzinfo=None))
+            filled = 0
+            for d in need:
+                v = sjc.get(d)
+                if v and "sjc_buy" in v:
+                    hist[d].update(v, est=False, src="SJC")
+                    filled += 1
+            print(f"SJC: điền {filled}/{len(need)} ngày còn ước tính")
+        except Exception as e:  # SJC có thể chặn IP nước ngoài: giữ cách ước tính cũ
+            print("SJC lỗi:", e)
+
     days = sorted(hist)
     real = [hist[d] for d in days if hist[d].get("est") is False]
     p0 = real[0]["sjc_buy"] / real[0]["world"] - 1 if real else 0.09
@@ -83,7 +131,7 @@ def main():
 
     latest = dict(hist[days[-1]])
     latest["premium"] = round(latest["sjc_sell"] / latest["world"] - 1, 4)
-    data = {"updated": datetime.now(VN).isoformat(timespec="minutes"), "source": "PNJ, Yahoo Finance",
+    data = {"updated": datetime.now(VN).isoformat(timespec="minutes"), "source": "PNJ, SJC, Yahoo Finance",
             "latest": latest, "history": [hist[d] for d in days]}
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -106,7 +154,7 @@ def series_stats(s, unit):
     last = float(s.iloc[-1])
     ch = lambda n: None if len(s) <= n else round(last - float(s.iloc[-1 - n]), 3) if unit == "pt" else round(last / float(s.iloc[-1 - n]) - 1, 4)  # noqa: E731
     ma200 = float(s.tail(200).mean())
-    return {"last": round(last, 4), "date": s.index[-1].strftime("%Y-%m-%d"), "chg1m": ch(21), "chg3m": ch(63), "chg1y": ch(252),
+    return {"last": round(last, 4), "date": s.index[-1].strftime("%Y-%m-%d"), "chg1m": ch(21), "chg3m": ch(63), "chg6m": ch(126), "chg1y": ch(252),
             "vsMa200": round(last / ma200 - 1, 4) if unit == "%" else None, "unit": unit}
 
 
