@@ -47,6 +47,20 @@
   addEventListener("popstate", () => show(location.hash.slice(1)));
   show(location.hash.slice(1));
 
+  // Khối thu gọn (details[data-k]): nhớ đóng/mở trên máy; mở ra thì vẽ lại biểu đồ bên trong cho đúng kích thước.
+  const OPEN_KEY = "quyvang_open";
+  let opened = {};
+  try { opened = JSON.parse(localStorage.getItem(OPEN_KEY)) || {}; } catch { /* bỏ qua */ }
+  document.querySelectorAll("details[data-k]").forEach((d) => {
+    const k = d.dataset.k;
+    if (k in opened) d.open = !!opened[k];
+    d.addEventListener("toggle", () => {
+      opened[k] = d.open;
+      try { localStorage.setItem(OPEN_KEY, JSON.stringify(opened)); } catch { /* bỏ qua */ }
+      if (d.open) d.querySelectorAll("canvas").forEach((c) => window.Chart?.getChart(c)?.resize());
+    });
+  });
+
   // Phiên bản = tham số ?v= của style.css (tăng mỗi lần deploy).
   const v = document.querySelector('link[href*="style.css"]')?.getAttribute("href").match(/v=([\w.-]+)/);
   if (v) document.getElementById("appVer").textContent = v[1];

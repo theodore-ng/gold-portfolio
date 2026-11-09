@@ -386,27 +386,8 @@ function renderGoldBottom(g) {
   return b;
 }
 
-/** Đóng/mở thẻ và từng mục con được nhớ trên máy (khóa quyvang_gv). Mở ra thì vẽ lại biểu đồ cho đúng kích thước. */
-let gvToggleBound = false;
-function bindGoldToggles() {
-  if (gvToggleBound) return;
-  gvToggleBound = true;
-  let st = {};
-  try { st = JSON.parse(localStorage.getItem("quyvang_gv") || "{}"); } catch {}
-  document.querySelectorAll("#goldVN, #goldVN details[data-k]").forEach((d) => {
-    const k = d.dataset.k || "card";
-    if (k in st) d.open = !!st[k];
-    d.addEventListener("toggle", () => {
-      st[k] = d.open;
-      try { localStorage.setItem("quyvang_gv", JSON.stringify(st)); } catch {}
-      if (d.open) { charts.gvPrem?.resize(); charts.gvSpread?.resize(); }
-    });
-  });
-}
-
 function renderGoldVN() {
   if (!$("#goldVN")) return;
-  bindGoldToggles();
   const p = typeof planCfg === "function" ? planCfg() : { premTarget: 3, horizon: 5 };
   const key = JSON.stringify([P?.updated, M?.updated, VNM?.asOf, OUTLOOK?.asOf, p.premTarget, p.horizon, p.rGold]);
   if (key === goldVNKey) return;

@@ -370,6 +370,7 @@ function renderBacktest(cur, tgt) {
   $("#btNote").innerHTML = !last ? "Chưa đủ số liệu thị trường để tính."
     : `Nếu đã chuyển sang hồ sơ đang chọn từ ${last.label} trước, quỹ hôm nay sẽ ${last.c.B >= V ? "cao" : "thấp"} hơn giữ nguyên khoảng <b>${money(Math.abs(last.c.B - V))}</b>. ` +
       `Kết quả nhìn lại phụ thuộc mạnh vào diễn biến vàng trong giai đoạn đó, nên dùng để hiểu rủi ro tập trung chứ không để đoán tương lai.`;
+  $("#btSum").textContent = last ? `Từ ${last.label} trước: dự án ${signed(last.c.B - V)}` : "";
 
   // Cơ cấu từng lớp cho một mốc
   if (!W.some((w) => w.mo === btWin && w.c)) btWin = last ? last.mo : 12;
@@ -461,6 +462,7 @@ function renderCompare(sim, cur, tgt, total, p) {
     row("Sụt giảm tối đa (trung vị)", sim.mddA, sim.mddB, pctFmt) +
     row("Thu nhập thụ động năm đầu (/tháng)", incA / 12, incB / 12, money) +
     `<tr><td>Xác suất dự án cao hơn giữ nguyên</td><td colspan="3" style="text-align:center"><b>${nf(sim.beat * 100, 0)}%</b> số kịch bản</td></tr>`;
+  $("#cmpSum").textContent = `${y} năm: dự án ${signed(fB[1] - fA[1])} · cao hơn ở ${nf(sim.beat * 100, 0)}% kịch bản`;
 
   const labels = Array.from({ length: n + 1 }, (_, m) => (m % 12 === 0 ? `Năm ${m / 12}` : ""));
   const cA = css("--muted"), cB = css("--dep");
