@@ -114,7 +114,7 @@ function renderInflation(st) {
   $("#inflTiles").innerHTML = tiles.map(([n, v, c, s]) => `<div class="tile"><span>${n}</span><b class="${c}">${v}</b><small>${esc(s)}</small></div>`).join("");
 
   // giá trị danh nghĩa và sức mua (quy về tiền đầu kỳ)
-  const H = P.history.slice(-365), t0 = H[0].d;
+  const H = historySince(365), t0 = H[0].d;
   const nom = H.map((h) => { const v = valueOn(h.d); return v.gold + v.cash + v.dep + v.sec; });
   const real = nom.map((v, i) => v / Math.pow(1 + cpi, daysBetween(t0, H[i].d) / 365));
   const ink = css("--muted");

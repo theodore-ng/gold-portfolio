@@ -2,6 +2,11 @@
 
 Phiên bản theo semver: sửa lỗi → patch, thêm tính năng → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
 
+## 1.0.2 – 09/11/2026
+
+- Sửa: biểu đồ Diễn biến giá trị danh mục và Lạm phát & sức mua cắt theo số ngày lịch (trước đây cắt theo số điểm dữ liệu nên 1Y kéo dài khoảng 16 tháng). Nhãn trục hiện năm khi xem từ 1Y trở lên.
+- Đơn vị thời gian theo chuẩn quốc tế: M (tháng), Y (năm) thay cho T/N (T dễ nhầm tuần/tháng).
+
 ## 1.0.1 – 09/11/2026
 
 - Đổi tên app thành **Quản lý tài chính**.

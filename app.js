@@ -36,6 +36,13 @@ const signed = (tr) => (tr >= 0 ? "+" : "−") + money(Math.abs(tr));
 const pct = (x) => (x >= 0 ? "+" : "−") + nf(Math.abs(x * 100), 1) + "%";
 const cls = (x) => (x >= 0 ? "up" : "down");
 const fmtDate = (d) => (d ? d.split("-").reverse().join("/") : "—");
+/** Lịch sử giá trong `days` ngày lịch gần nhất (lịch sử chỉ có ngày giao dịch, nên không cắt theo số điểm). */
+const historySince = (days) => {
+  if (!days || !P.history.length) return P.history;
+  const t = new Date(P.history.at(-1).d); t.setDate(t.getDate() - days);
+  const k = t.toISOString().slice(0, 10);
+  return P.history.filter((h) => h.d >= k);
+};
 const num = (v) => (v === "" || v == null ? null : Number(v));
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 if (window.Chart) Chart.defaults.font.family = '"Be Vietnam Pro", system-ui, sans-serif';
@@ -461,8 +468,8 @@ function renderAlloc(gold, cash, dep, sm, total) {
 }
 
 function renderCharts(st) {
-  const H = range ? P.history.slice(-range) : P.history;
-  const labels = H.map((h) => fmtDate(h.d).slice(0, 5) + (range === 0 || range > 365 ? "/" + h.d.slice(2, 4) : ""));
+  const H = historySince(range);
+  const labels = H.map((h) => fmtDate(h.d).slice(0, 5) + (range === 0 || range >= 365 ? "/" + h.d.slice(2, 4) : ""));
   const vals = H.map((h) => valueOn(h.d));
   const est = H.map((h) => !!h.est);
   const dash = (ctx) => (est[ctx.p1DataIndex] ? [5, 4] : undefined);
