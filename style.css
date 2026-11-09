@@ -200,3 +200,9 @@ details.gvsec { border-top: 1px solid var(--line); margin-top: 14px; padding-top
 details.gvsec > summary { color: var(--ink); font-size: 15px; }
 details.gvsec[open] > summary { margin-bottom: 10px; }
 #gvSum { white-space: normal; }
+/* Tăng/giảm kiểu bảng giá: ▲ xanh, ▼ đỏ, ■ đứng giá (vàng) */
+.chg { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chg.up { color: var(--up); } .chg.down { color: var(--down); } .chg.flat { color: var(--gold); }
+#priceStamp { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; font-size: 13px; cursor: default; }
+#priceStamp .gp { white-space: nowrap; }
+#priceStamp .gp b { font-family: var(--serif); font-size: 17px; font-variant-numeric: tabular-nums; }

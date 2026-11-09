@@ -1,6 +1,11 @@
 # Nhật ký thay đổi
 
-Phiên bản theo semver: sửa lỗi → patch, thêm tính năng → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
+Phiên bản theo semver: sửa lỗi và điều chỉnh nhỏ → patch, cập nhật lớn → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
+
+## 1.0.3 – 09/11/2026
+
+- Thanh tiêu đề: giá vàng SJC mua/bán hôm nay kèm ▲ xanh / ▼ đỏ / ■ đứng giá so với phiên trước (thay dòng nguồn giá; nguồn và giờ cập nhật hiện khi rê chuột).
+- Diễn biến giá trị danh mục: dòng giá trị hôm nay và tăng/giảm so với phiên trước, cùng kiểu mũi tên; ô NAV ở Tổng quan dùng cùng kiểu.
 
 ## 1.0.2 – 09/11/2026
 

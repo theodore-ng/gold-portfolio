@@ -35,6 +35,11 @@ const money = (tr) => (Math.abs(tr) >= 1000 ? nf(tr / 1000, 2) + " tỷ" : nf(tr
 const signed = (tr) => (tr >= 0 ? "+" : "−") + money(Math.abs(tr));
 const pct = (x) => (x >= 0 ? "+" : "−") + nf(Math.abs(x * 100), 1) + "%";
 const cls = (x) => (x >= 0 ? "up" : "down");
+/** Tăng/giảm kiểu bảng giá chứng khoán: ▲ xanh, ▼ đỏ, ■ đứng giá. */
+const chg = (d, text) => {
+  const k = Math.abs(d) < 1e-9 ? "flat" : d > 0 ? "up" : "down";
+  return `<span class="chg ${k}">${{ up: "▲", down: "▼", flat: "■" }[k]} ${text}</span>`;
+};
 const fmtDate = (d) => (d ? d.split("-").reverse().join("/") : "—");
 /** Lịch sử giá trong `days` ngày lịch gần nhất (lịch sử chỉ có ngày giao dịch, nên không cắt theo số điểm). */
 const historySince = (days) => {
@@ -232,9 +237,15 @@ function render() {
   const unknownHeld = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
   const pnl = unreal + st.realized + st.interest + secUnreal;
 
-  $("#priceStamp").textContent = `Giá SJC: ${livePNJ ? "trực tiếp PNJ" : "theo file giá"} · vàng TG cập nhật ${P.updated ? new Date(P.updated).toLocaleString("vi-VN") : "—"}`;
+  // Thanh tiêu đề: giá vàng SJC mua/bán hôm nay, tăng/giảm so với phiên trước
+  const Y = P.history.length > 1 ? P.history.at(-2) : null;
+  const gp = (label, now, before) => `<span class="gp"><span class="muted">${label}</span> <b>${nf(now, 1)}</b>${before ? " " + chg(now - before, nf(Math.abs(now - before), 1)) : ""}</span>`;
+  $("#priceStamp").innerHTML = `<span class="muted">Vàng SJC</span>${gp("Mua", L.sjc_buy, Y?.sjc_buy)}${gp("Bán", L.sjc_sell, Y?.sjc_sell)}<span class="muted">tr/lượng</span>`;
+  $("#priceStamp").title = `So với ${fmtDate(prevDate)} · giá ${livePNJ ? "trực tiếp PNJ" : "theo file giá"} · vàng thế giới cập nhật ${P.updated ? new Date(P.updated).toLocaleString("vi-VN") : "—"}`;
+  const dayD = total - prevTotal, dayTxt = `${chg(dayD, `${money(Math.abs(dayD))} (${pct(prevTotal ? total / prevTotal - 1 : 0)})`)} so với ${fmtDate(prevDate)}`;
   $("#kTotal").textContent = money(total);
-  $("#kDay").innerHTML = `<span class="${cls(total - prevTotal)}">${signed(total - prevTotal)} (${pct(prevTotal ? total / prevTotal - 1 : 0)})</span> so với ${fmtDate(prevDate)}`;
+  $("#kDay").innerHTML = dayTxt;
+  $("#fundDay").innerHTML = `Giá trị hôm nay <b>${money(total)}</b> ${dayTxt}`;
   $("#kPnl").innerHTML = `<span class="${cls(pnl)}">${signed(pnl)}</span>`;
   $("#kPnlNote").innerHTML = (basis ? `${pct(pnl / basis)} trên giá vốn vàng · ` : "") +
     `vàng chưa chốt ${signed(unreal)} · đã chốt ${signed(st.realized)} · lãi TK ${signed(st.interest)}` +
