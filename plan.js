@@ -296,7 +296,9 @@ function renderPlan(st) {
     <p class="small"><b>Kết quả:</b> ${frontier}.</p>
     <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở <a href="#assets" data-focus="assumeForm">Tài sản › Kỳ vọng › Giả định</a>.</p>` +
     (p.profile !== p.risk ? `<p class="advice small">Bạn đang áp dụng hồ sơ <b>${esc(PROFILES[p.profile].name)}</b>, khác với mức rủi ro bạn chọn (${esc(PROFILES[p.risk].name)}). <button type="button" class="ghost" data-apply-rec>Áp dụng đề xuất</button></p>` : "");
-  $("#planNote").textContent = `Bảng trên là các bước điều chỉnh để danh mục khớp với hồ sơ ${PROFILES[p.profile].name}. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo lộ trình ở Thông tin › Hôm nay.`;
+  $("#planNote").textContent = `Bảng trên là các bước điều chỉnh để danh mục khớp với hồ sơ ${PROFILES[p.profile].name}. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo lộ trình bán vàng ở trên.`;
+
+  if (analysisAt) { analysisAt = new Date(); renderAnalysis(st); } // đã bấm Phân tích: cập nhật theo dữ liệu mới
 
   const { profile, ...rest } = p;
   const cardKey = JSON.stringify([cur, rest, S.settings.minKeep, P.latest.premium, c.r]);
@@ -315,6 +317,62 @@ function renderPlan(st) {
     : `Điểm hòa: vàng thế giới cần tăng khoảng <b>${nf(be, 1)}%/năm</b> (trung vị, đã tính premium SJC co về ${nf(p.premTarget, 0)}%) thì giữ nguyên mới bằng dự án sau ${p.horizon} năm. ` +
       (be > p.rGold ? `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, nên theo dự án có lợi thế.` : `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, cao hơn điểm hòa, nên giữ nguyên đang có lợi thế về trung vị nhưng rủi ro tập trung cao hơn.`) +
       ` Để so sánh: 10 năm qua vàng quy VND tăng ~14%/năm, là giai đoạn đặc biệt mạnh.`;
+}
+
+/* ---------- Phân tích danh mục (nút ở Thông tin › Đề xuất): tính trên trình duyệt, không gửi dữ liệu đi đâu ---------- */
+let analysisAt = null;
+function renderAnalysis(st) {
+  const p = planCfg(), cur = currentMix(st), total = Object.values(cur).reduce((a, b) => a + b, 0), tgt = targetMix(total);
+  const months = Math.max(1, S.settings.dcaMonths || 12), gs = S.settings, g = glide(st), c = optimal(p.profile, total).cme;
+  const tol = Math.max(total * 0.01, 1), share = (v) => nf(total ? (v / total) * 100 : 0, 0) + "%";
+  const rows = CLASSES.map(([k, name, color, tip]) => {
+    const d = tgt[k] - cur[k];
+    return { k, name, color, tip, d, act: Math.abs(d) < tol ? "hold" : d > 0 ? "up" : "down" };
+  });
+  // Lộ trình: vàng theo lịch bán (đợt tháng này, sau đó nhịp cơ bản, không dưới mức giữ); lớp khác chuyển đều trong `months` tháng
+  const goldPxAvg = st.gold ? cur.gold / st.gold : P.latest.sjc_buy;
+  let goldDone = 0;
+  const goldAt = (m) => {
+    let rem = g.remaining, sold = 0, i = 0;
+    for (; i < m && rem > 1e-9; i++) { const q = i === 0 ? (g.qty === 0 ? 0 : Math.min(g.left, rem)) : Math.min(gs.tranche, rem); rem -= q; sold += q; if (gs.tranche <= 0 && i > 0) break; }
+    return (st.gold - sold) * goldPxAvg;
+  };
+  for (let m = 1; m <= 60; m++) if (goldAt(m) <= goldAt(60) + 1e-6) { goldDone = m; break; }
+  const at = (r, m) => (r.k === "gold" && r.act === "down" ? goldAt(m) : cur[r.k] + r.d * Math.min(m / months, 1));
+  const marks = [3, 6, 12];
+  const actTxt = { up: ["Tăng", "up"], down: ["Giảm", "down"], hold: ["Giữ", "muted"] };
+
+  const list = (act) => rows.filter((r) => r.act === act).map((r) => `${r.name} (${r.d >= 0 ? "+" : "−"}${money(Math.abs(r.d))})`).join(", ");
+  const now = [];
+  for (const r of rows) {
+    if (r.act === "hold") continue;
+    if (r.k === "gold" && r.act === "down") now.push(g.qty === 0 ? `<b>Vàng:</b> tạm dừng bán tháng này (${esc(g.why)}).` : g.left > 0 ? `<b>Vàng:</b> bán ${nf(g.left, 2)} lượng tháng này (≈ ${money(g.left * P.latest.sjc_buy)}), sau đó ${gs.tranche} lượng/tháng; dự kiến xong sau ~${goldDone} tháng.` : `<b>Vàng:</b> đã bán đủ đợt tháng này.`);
+    else now.push(`<b>${r.name}:</b> ${r.act === "up" ? "thêm" : "giảm"} khoảng <b>${money(Math.abs(r.d) / months)}/tháng</b> trong ${months} tháng. <span class="muted">${r.tip}</span>`);
+  }
+
+  const ph = typeof cyclePhase === "function" ? cyclePhase() : null, ff = typeof flowFactors === "function" ? flowFactors() : [];
+  const fscore = ff.reduce((s, x) => s + x.dir, 0), rscore = recessionChecks().reduce((s, x) => s + (x.level === "alert" ? 2 : x.level === "warn" ? 1 : 0), 0);
+  const prem = P.latest.premium ?? 0, dep = vn("deposit"), cpi = vn("cpiYoy"), other = secMix().other;
+  const ctx = [
+    ph && `Chu kỳ Việt Nam: pha <b>${ph.name}</b> (${esc(ph.axis)}): thường thuận cho ${ph.best.toLowerCase()}.`,
+    ff.length && `Dòng tiền: ${fscore >= 2 ? "nghiêng về tài sản rủi ro" : fscore <= -2 ? "nghiêng về tài sản an toàn" : "trung tính, phân hóa"} (${fscore >= 0 ? "+" : ""}${fscore} điểm, xem Vĩ mô & dòng tiền).`,
+    `Rủi ro suy thoái toàn cầu: ${rscore >= 6 ? "cao" : rscore >= 3 ? "trung bình" : "thấp"} (${rscore} điểm). ${rscore >= 3 ? "Giữ nhịp giải ngân đều, không mua dồn." : ""}`,
+    `Premium SJC so với thế giới ${pct(prem)}: ${prem * 100 > gs.premHigh ? "cao, có lợi khi bán vàng" : prem * 100 < gs.premLow ? "thấp, nên tạm dừng bán" : "bình thường"}.`,
+    dep && cpi && `Lãi tiết kiệm thực ${nf(dep.value - cpi.value, 1)}%/năm (${nf(dep.value, 1)}% − CPI ${nf(cpi.value, 2)}%).`,
+    `Kỳ vọng lợi nhuận (CME, ${p.horizon} năm): ${OPT_KEYS.map((k) => `${LABEL[k]} ${nf(c.r[k], 1)}%`).join(" · ")}.`,
+    other > 0 && `Tài sản khác (${money(other)}) không tính vào phân bổ.`,
+  ].filter(Boolean);
+
+  $("#analysisBox").innerHTML = `
+    <p class="advice small">Danh mục đầu tư <b>${money(total)}</b>, hồ sơ <b>${esc(PROFILES[p.profile].name)}</b>.
+      ${list("down") ? `Cần giảm: <b class="down">${list("down")}</b>. ` : ""}${list("up") ? `Cần tăng: <b class="up">${list("up")}</b>. ` : ""}${list("hold") ? `Giữ: ${list("hold")}.` : ""}</p>
+    <div class="tablewrap"><table><tr><th>Lớp tài sản</th><th>Hiện tại</th>${marks.map((m) => `<th>Sau ${m} tháng</th>`).join("")}<th>Mục tiêu</th><th>Hướng</th></tr>
+      ${rows.map((r) => `<tr><td><span class="dot" style="background:${css(r.color)}"></span>${r.name}</td><td>${money(cur[r.k])} <span class="muted">${share(cur[r.k])}</span></td>
+        ${marks.map((m) => `<td>${money(at(r, m))}</td>`).join("")}<td>${money(tgt[r.k])} <span class="muted">${share(tgt[r.k])}</span></td>
+        <td class="${actTxt[r.act][1]}">${actTxt[r.act][0]}</td></tr>`).join("")}</table></div>
+    <h3 class="sub">Việc cần làm</h3><ul class="pts">${now.map((x) => `<li>${x}</li>`).join("") || "<li>Danh mục đã khớp mục tiêu.</li>"}</ul>
+    <h3 class="sub">Bối cảnh dùng để phân tích</h3><ul class="pts">${ctx.map((x) => `<li>${x}</li>`).join("")}</ul>
+    <p class="muted small">Phân tích lúc ${analysisAt.toLocaleString("vi-VN")}. Mốc 3/6/12 tháng là ước tính: vàng theo lịch bán, các lớp khác chuyển đều trong ${months} tháng (chỉnh ở quy tắc lộ trình); tiền bán vàng đi qua tiền mặt rồi mới phân bổ. Không phải khuyến nghị đầu tư.</p>`;
 }
 
 function renderCompare(sim, cur, tgt, total, p) {
@@ -382,6 +440,7 @@ function bindPlan() {
     const p = planCfg(); p.risk = e.target.value; p.profile = p.risk; save(); render();
   });
   $("#profileCards").addEventListener("keydown", pick);
+  $("#btnAnalyze").onclick = () => { analysisAt = new Date(); renderAnalysis(derive()); $("#btnAnalyze").textContent = "Phân tích lại"; };
   $("#horizon").onclick = (e) => {
     const h = e.target.dataset?.h;
     if (!h) return;

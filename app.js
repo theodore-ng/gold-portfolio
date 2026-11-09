@@ -236,14 +236,6 @@ function render() {
   $("#kGoldVal").textContent = `${money(goldVal)} theo giá mua vào`;
   $("#kSjc").textContent = `${nf(L.sjc_buy, 1)} / ${nf(L.sjc_sell, 1)}`;
   $("#kPrem").textContent = `Premium ${pct(L.premium ?? 0)} · TG $${nf(L.xau ?? 0, 0)} ≈ ${nf(L.world ?? 0, 1)} tr`;
-  // Tóm tắt ở Thông tin › Hôm nay
-  $("#sumTotal").textContent = $("#kTotal").textContent;
-  $("#sumDay").innerHTML = $("#kDay").innerHTML;
-  $("#sumGold").textContent = $("#kGold").textContent;
-  $("#sumGoldVal").textContent = $("#kGoldVal").textContent;
-  $("#sumSjc").textContent = $("#kSjc").textContent;
-  $("#sumPrem").textContent = $("#kPrem").textContent;
-  $("#sumCash").textContent = money(st.cash);
   if (st.errors.length) alert(st.errors.join("\n"));
 
   // lộ trình
@@ -277,28 +269,13 @@ function render() {
 
   renderTodo(st, g, L);
   renderAdjust(st);
-  renderLots(st, L);
-  renderDeps(st);
   renderTx(st);
   renderAlloc(goldVal, st.cash, st.depVal, sm, total);
-  renderSec();
   renderCharts(st);
   renderPlan(st);
   renderInvest(st);
   renderInflation(st);
   sellPreview();
-}
-
-function renderLots(st, L) {
-  const rows = st.lots.map((l, i) => {
-    const px = goldPx(l, L), val = l.rem * px, gain = l.cost == null ? null : l.rem * (px - l.cost);
-    return `<tr><td>${i + 1}. ${esc(l.note || "Lô vàng")} <small class="muted">${GOLD_KINDS[l.kind || "sjc"]}</small></td><td>${fmtDate(l.date)}</td>
-      <td>${nf(l.rem, 2)} / ${nf(l.luong, 2)}</td>
-      <td><input type="number" step="0.01" min="0" value="${l.cost ?? ""}" placeholder="?" data-cost="${l.src}:${l.id}"></td>
-      <td>${money(val)}</td>
-      <td class="${gain == null ? "muted" : cls(gain)}">${gain == null ? "chưa có giá vốn" : `${signed(gain)} (${pct(px / l.cost - 1)})`}</td></tr>`;
-  });
-  $("#lotsTable").innerHTML = `<tr><th>Lô</th><th>Ngày mua</th><th>Còn / ban đầu (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Giá trị</th><th>Lãi/lỗ chưa chốt</th></tr>` + rows.join("");
 }
 
 /** Việc cần làm hôm nay: rút ra từ lộ trình bán vàng, tiết kiệm đáo hạn, dữ liệu còn thiếu. */
@@ -311,7 +288,7 @@ function renderTodo(st, g, L) {
   }
   for (const x of st.deps) {
     const m = depMature(x);
-    if (!x.closed && m <= d) items.push({ act: 1, ic: "₫", t: `Tất toán tiết kiệm ${x.bank} (đáo hạn ${fmtDate(m)})`, s: `Gốc ${money(x.amount)}, sau đó tái tục hoặc phân bổ theo đề xuất`, go: ["assets", "depTable", "Tất toán"] });
+    if (!x.closed && m <= d) items.push({ act: 1, ic: "₫", t: `Tất toán tiết kiệm ${x.bank} (đáo hạn ${fmtDate(m)})`, s: `Gốc ${money(x.amount)}, sau đó tái tục hoặc phân bổ theo đề xuất`, go: ["me", "adjDeps", "Tất toán"] });
   }
   const unk = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
   if (unk > 0) items.push({ act: 1, ic: "?", t: `Nhập giá vốn cho ${nf(unk, 2)} lượng vàng`, s: "Để tính đúng lãi/lỗ", go: ["me", "adjLots", "Nhập"] });
@@ -376,31 +353,34 @@ function renderAdjust(st) {
   buildSecAdjust();
   const L = P.latest, del = (attr, id) => `<td><button type="button" class="ghost" ${attr}="${id}">Xóa</button></td>`;
   // Vàng
-  $("#adjLots").innerHTML = `<tr><th>Loại</th><th>Ngày mua</th><th>Số lượng (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Giá hiện tại (tr/lượng)</th><th>Nơi mua / ghi chú</th><th>Còn lại</th><th>Giá trị</th><th></th></tr>` +
-    st.lots.map((l) => `<tr>
+  $("#adjLots").innerHTML = `<tr><th>Loại</th><th>Ngày mua</th><th>Số lượng (lượng)</th><th>Giá vốn (tr/lượng)</th><th>Giá hiện tại (tr/lượng)</th><th>Nơi mua / ghi chú</th><th>Còn lại</th><th>Giá trị</th><th>Lãi/lỗ chưa chốt</th><th></th></tr>` +
+    st.lots.map((l) => { const px = goldPx(l, L), gain = l.cost == null ? null : l.rem * (px - l.cost); return `<tr>
       <td>${cell(l.src, l.id, "kind", l.kind || "sjc", "sel:" + Object.entries(GOLD_KINDS).map(([k, n]) => `${k}=${n}`).join(","))}</td>
       <td>${cell(l.src, l.id, "date", l.date, "date")}</td>
       <td>${cell(l.src, l.id, "luong", l.luong, "num")}</td>
       <td>${cell(l.src, l.id, "cost", l.cost, "num", 'placeholder="?"')}</td>
       <td>${l.kind === "other" ? cell(l.src, l.id, "price", l.price, "num", 'placeholder="= giá vốn"') : `<span class="muted">${nf(goldPx(l, L), 1)} (tự động)</span>`}</td>
       <td>${cell(l.src, l.id, "note", l.note, "text")}</td>
-      <td>${nf(l.rem, 2)}</td><td>${money(l.rem * goldPx(l, L))}</td>
-      ${l.src === "init" ? del("data-dellot", l.id) : del("data-del", l.id)}</tr>`).join("");
+      <td>${nf(l.rem, 2)}</td><td>${money(l.rem * px)}</td>
+      <td class="${gain == null ? "muted" : cls(gain)}">${gain == null ? "chưa có giá vốn" : `${signed(gain)} (${pct(px / l.cost - 1)})`}</td>
+      ${l.src === "init" ? del("data-dellot", l.id) : del("data-del", l.id)}</tr>`; }).join("");
   $("#accSum-gold").textContent = `${nf(st.gold, 2)} lượng · ${money(goldValue(st.lots, L))}`;
   // Tiền mặt
   $("#adjCashNow").textContent = money(st.cash);
   $("#accSum-cash").textContent = money(st.cash);
   // Tiết kiệm
-  const open = st.deps.filter((x) => !x.closed);
+  const open = st.deps.filter((x) => !x.closed), d = today();
   $("#adjDeps").innerHTML = open.length
-    ? `<tr><th>Ngân hàng</th><th>Ngày gửi</th><th>Số tiền (tr)</th><th>Lãi (%/năm)</th><th>Kỳ hạn (tháng)</th><th>Đáo hạn</th><th></th></tr>` +
-      open.map((x) => `<tr>
+    ? `<tr><th>Ngân hàng</th><th>Ngày gửi</th><th>Số tiền (tr)</th><th>Lãi (%/năm)</th><th>Kỳ hạn (tháng)</th><th>Lãi dồn tích</th><th>Đáo hạn</th><th></th><th></th></tr>` +
+      open.map((x) => { const m = depMature(x); return `<tr>
         <td>${cell("tx", x.id, "bank", x.bank, "text")}</td>
         <td>${cell("tx", x.id, "date", x.date, "date")}</td>
         <td>${cell("tx", x.id, "amount", x.amount, "num")}</td>
         <td>${cell("tx", x.id, "rate", x.rate, "num")}</td>
         <td>${cell("tx", x.id, "months", x.months, "num")}</td>
-        <td>${fmtDate(depMature(x))}</td>${del("data-del", x.id)}</tr>`).join("")
+        <td class="up">${signed(depValue(x, d) - x.amount)}</td>
+        <td>${fmtDate(m)}${m <= d ? " <b>· đáo hạn</b>" : ""}</td>
+        <td><button type="button" class="ghost" data-close="${x.id}">Tất toán</button></td>${del("data-del", x.id)}</tr>`; }).join("")
     : `<tr><td class="muted">Không có khoản tiết kiệm đang gửi.</td></tr>`;
   $("#accSum-dep").textContent = `${open.length} sổ · ${money(st.depVal)}`;
   // Chứng khoán & tài sản khác
@@ -418,22 +398,6 @@ function renderAdjust(st) {
       : `<tr><td class="muted">Chưa có. Bấm "+ Thêm" bên dưới.</td></tr>`;
     $(`#accSum-${g}`).textContent = list.length ? `${list.length} mục · ${money(list.reduce((s, h) => s + secValue(h), 0))}` : "";
   }
-}
-
-/** Tài sản › Chi tiết: bảng chứng khoán & tài sản khác (chỉ xem). */
-function renderSec() {
-  const list = S.sec || [];
-  $("#secCard").hidden = !list.length;
-  if (!list.length) return;
-  const CLS = { bond: "Trái phiếu", equity: "Cổ phiếu lõi", sat: "Vệ tinh", other: "Khác" };
-  $("#secTable").innerHTML = `<tr><th>Mã / tên</th><th>Loại</th><th>Nhóm phân bổ</th><th>Số lượng</th><th>Giá vốn</th><th>Giá hiện tại</th><th>Giá trị</th><th>Lãi/lỗ</th></tr>` +
-    list.map((h) => {
-      const px = secPx(h), gain = secGain(h), tr = h.type === "other";
-      return `<tr><td><b>${esc(h.code)}</b>${h.broker ? ` <small class="muted">${esc(h.broker)}</small>` : ""}</td><td>${SEC_TYPES[h.type].name}</td><td>${CLS[secClass(h)]}</td>
-        <td>${tr ? "—" : nf(h.qty, h.qty % 1 ? 2 : 0)}</td><td>${h.cost == null ? "—" : tr ? money(h.cost) : nf(h.cost, 0)}</td>
-        <td>${px.src ? (tr ? money(px.p) : nf(px.p, 0)) + ` <small class="muted">${px.src}</small>` : '<span class="warn">chưa có giá</span>'}</td>
-        <td>${money(secValue(h))}</td><td class="${gain == null ? "muted" : cls(gain)}">${gain == null ? "—" : signed(gain)}</td></tr>`;
-    }).join("");
 }
 
 /** Áp dụng một ô sửa; từ chối nếu làm sai lệch giao dịch đã có. */
@@ -461,19 +425,6 @@ function applyEdit(el) {
 
 const depMature = (x) => { const m = new Date(x.date); m.setMonth(m.getMonth() + Number(x.months)); return m.toLocaleDateString("sv-SE"); };
 
-function renderDeps(st) {
-  if (!st.deps.length) { $("#depTable").innerHTML = `<tr><td class="muted">Chưa có khoản tiết kiệm nào.</td></tr>`; return; }
-  const d = today();
-  const rows = st.deps.map((x) => {
-    const m = depMature(x);
-    const cur = x.closed ? x.received : depValue(x, d);
-    return `<tr><td>${esc(x.bank)}</td><td>${fmtDate(x.date)}</td><td>${x.months} th · ${nf(x.rate, 2)}%</td><td>${money(x.amount)}</td>
-      <td class="up">${signed(cur - x.amount)}</td><td>${fmtDate(m)}${!x.closed && m <= d ? " <b>· đáo hạn</b>" : ""}</td>
-      <td>${x.closed ? `<span class="muted">Đã tất toán ${fmtDate(x.closed)}</span>` : `<button class="ghost" data-close="${x.id}">Tất toán</button>`}</td></tr>`;
-  });
-  $("#depTable").innerHTML = `<tr><th>Ngân hàng</th><th>Ngày gửi</th><th>Kỳ hạn · lãi</th><th>Gốc</th><th>Lãi dồn tích</th><th>Đáo hạn</th><th></th></tr>` + rows.join("");
-}
-
 const TX_LABEL = { sell: "Bán vàng", buy: "Mua vàng", dep_open: "Gửi tiết kiệm", dep_close: "Tất toán TK", cash: "Tiền mặt" };
 function renderTx(st) {
   const saleById = Object.fromEntries(st.sales.map((s) => [s.id, s]));
@@ -483,7 +434,7 @@ function renderTx(st) {
       const s = saleById[t.id]; flow = t.luong * t.price;
       detail = `${nf(t.luong, 2)} lượng × ${nf(t.price, 1)} tr · lãi ${s ? signed(s.pnl) : "—"}${s?.unknown ? ` (${nf(s.unknown, 2)} lượng chưa có giá vốn)` : ""}`;
     } else if (t.type === "buy") { flow = t.fromCash ? -t.luong * (t.cost || 0) : 0; detail = `${nf(t.luong, 2)} lượng${t.cost ? " × " + nf(t.cost, 1) + " tr" : ""}`; }
-    else if (t.type === "dep_open") { flow = -t.amount; detail = `${esc(t.bank)} · ${t.months} tháng · ${nf(t.rate, 2)}%`; }
+    else if (t.type === "dep_open") { flow = t.ext ? 0 : -t.amount; detail = `${esc(t.bank)} · ${money(t.amount)} · ${t.months} tháng · ${nf(t.rate, 2)}%${t.ext ? " · sổ có từ trước" : ""}`; }
     else if (t.type === "dep_close") { flow = t.received; detail = "Nhận gốc + lãi"; }
     else if (t.type === "cash") { flow = t.amount; }
     if (t.note) detail += (detail ? " · " : "") + esc(t.note);
@@ -493,6 +444,7 @@ function renderTx(st) {
   $("#txTable").innerHTML = rows.length
     ? `<tr><th>Ngày</th><th>Loại</th><th style="text-align:left">Chi tiết</th><th>Tiền mặt</th><th></th></tr>` + rows.join("")
     : `<tr><td class="muted">Chưa có giao dịch.</td></tr>`;
+  $("#accSum-tx").textContent = rows.length ? `${rows.length} giao dịch` : "";
 }
 
 function renderAlloc(gold, cash, dep, sm, total) {
@@ -661,12 +613,7 @@ function bind() {
   });
 
   document.addEventListener("change", (e) => {
-    if (e.target.dataset?.edit) { applyEdit(e.target); return; }
-    const k = e.target.dataset?.cost;
-    if (!k) return;
-    const [src, id] = k.split(":"), v = num(e.target.value);
-    const obj = src === "init" ? S.lots.find((l) => l.id === id) : S.tx.find((t) => t.id === id);
-    if (obj) { obj.cost = v; save(); render(); }
+    if (e.target.dataset?.edit) applyEdit(e.target);
   });
 
   document.addEventListener("click", (e) => {

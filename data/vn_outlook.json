@@ -1,0 +1,72 @@
+{
+  "_note": "Nhận định vĩ mô do Claude tổng hợp từ tin tức (data/news_archive) và số liệu có nguồn, người dùng duyệt trước khi push. Cập nhật hằng tháng/quý. Mỗi điểm phải có nguồn.",
+  "asOf": "2026-11-09",
+  "period": "Quý IV/2026",
+  "author": "Claude tổng hợp, người dùng duyệt",
+  "summary": [
+    { "text": "Tăng trưởng rất mạnh: GDP quý III tăng 9,95%, 9 tháng 9,01%. Xuất khẩu tháng 10 tăng 51,43% so với cùng kỳ, xuất siêu 7,31 tỷ USD. Quốc hội giao mục tiêu tăng trưởng năm 2027 từ 10% trở lên.",
+      "src": [{ "name": "Cục Thống kê", "url": "https://tapchikinhtetaichinh.vn/tong-san-pham-trong-nuoc-gdp-quy-iii-2026-tang-9-95-168574.html" }, { "name": "CafeF/KIS", "url": "https://cafef.vn/kis-research-xuat-sieu-731-ty-usd-xuat-khau-dan-dat-tang-truong-188261107091739715.chn" }, { "name": "Vietstock", "url": "http://vietstock.vn/2026/11/quoc-hoi-giao-muc-tieu-tang-truong-kinh-te-nam-2027-tu-10-tro-len-761-1512769.htm" }] },
+    { "text": "Lạm phát đang tăng: CPI tháng 10 tăng 5,09% so với cùng kỳ, cao hơn bình quân 10 tháng (4,57%). Lạm phát cơ bản 4,04%.",
+      "src": [{ "name": "Cục Thống kê", "url": "https://tapchikinhtetaichinh.vn/cpi-thang-10-tang-0-2-gia-luong-thuc-thuc-pham-va-du-lich-giam-171407.html" }] },
+    { "text": "Tiền tệ trong nước nới lỏng ngược chiều Mỹ: lãi suất huy động đang giảm, NHNN hỗ trợ thanh khoản; MBS dự báo giảm thêm 20–30 điểm cơ bản đến cuối năm. Trong khi đó Fed đã quay lại tăng lãi suất (3,75–4,00%).",
+      "src": [{ "name": "VnEconomy", "url": "https://vneconomy.vn/du-bao-lai-suat-huy-dong-tiep-tuc-giam-03-tu-nay-toi-cuoi-nam-2026.htm" }, { "name": "CafeF", "url": "https://cafef.vn/du-dia-giam-lai-suat-con-den-dau-188261106215141875.chn" }, { "name": "CNBC", "url": "https://www.cnbc.com/2026/10/28/fed-interest-rate-decision-october-2026.html" }] },
+    { "text": "Chứng khoán lệch pha với kinh tế: lợi nhuận doanh nghiệp quý III tăng tích cực nhưng VN-Index vẫn giảm đầu tháng 11, dòng tiền đứng ngoài; khối ngoại bán ròng mạnh nhóm ngân hàng rồi mua ròng trở lại cuối tuần.",
+      "src": [{ "name": "CafeF", "url": "https://cafef.vn/loi-nhuan-doanh-nghiep-tang-manh-dong-tien-van-dung-ngoai-thi-truong-188261108183728381.chn" }, { "name": "CafeF", "url": "https://cafef.vn/ba-co-phieu-ngan-hang-bat-ngo-tro-thanh-tam-diem-xa-hang-cua-khoi-ngoai-trong-tuan-dau-thang-11-188261106235313544.chn" }] }
+  ],
+  "sections": [
+    { "title": "Quý IV/2026: diễn biến chính (đến 09/11)", "points": [
+      { "text": "Đầu tư công: giải ngân 10 tháng đạt 74,1% kế hoạch (708.567 tỷ), tăng 19,7% so với cùng kỳ. Quốc hội xem xét 3 dự án cao tốc dài ~430,5 km, vốn 162.393 tỷ, hoàn thành 2030. TP.HCM chuẩn bị khởi công 5 tuyến metro cuối năm.",
+        "src": [{ "name": "Báo Đấu thầu", "url": "https://baodauthau.vn/10-thang-nam-2026-giai-ngan-von-dau-tu-cong-dat-741-ke-hoach-post211842.html" }, { "name": "CafeF", "url": "https://cafef.vn/quoc-hoi-xem-xet-chu-truong-dau-tu-3-du-an-cao-toc-lon-188261108075801333.chn" }, { "name": "CafeF", "url": "https://cafef.vn/tp-ho-chi-minh-san-sang-khoi-cong-5-tuyen-metro-cuoi-nam-2026-188261108202033911.chn" }] },
+      { "text": "Chính sách tài khóa: Nghị định 398/2026/NĐ-CP (29/10/2026) hướng dẫn giảm thuế thu nhập cá nhân và thu nhập doanh nghiệp theo Nghị quyết 43/2026/QH16.",
+        "src": [{ "name": "CafeF", "url": "https://cafef.vn/toan-van-nghi-dinh-398-2026-nd-cp-ve-giam-thue-thu-nhap-ca-nhan-thue-thu-nhap-doanh-nghiep-188261107152035278.chn" }] },
+      { "text": "Tỷ giá: USD tại ngân hàng và thị trường tự do giảm từ đầu tháng 8 đến 5/11 nhờ nguồn cung ngoại tệ dồi dào; dư nợ vay ngoại tệ tại TP.HCM tăng 42% trong 10 tháng.",
+        "src": [{ "name": "CafeF", "url": "https://cafef.vn/ty-gia-usd-vnd-co-them-yeu-to-ho-tro-trong-nhung-thang-cuoi-nam-188261108111707668.chn" }, { "name": "CafeF", "url": "https://cafef.vn/du-no-cho-vay-ngoai-te-tai-tphcm-tang-42-188261106224042313.chn" }] },
+      { "text": "Thị trường vốn: Việt Nam đã vào chỉ số FTSE; kỳ rà soát bán niên đầu tiên tháng 3/2027 xác định danh mục 27 cổ phiếu. HNX huy động 69.362 tỷ trái phiếu Chính phủ tháng 10 (173% kế hoạch). 9 ngân hàng xúc tiến lập ngân hàng con tại Trung tâm tài chính quốc tế (VIFC).",
+        "src": [{ "name": "VnEconomy", "url": "https://vneconomy.vn/nen-theo-doi-ky-ra-soat-cua-ftse-russell-vao-thang-32027.htm" }, { "name": "VnEconomy", "url": "https://vneconomy.vn/hnx-huy-dong-duoc-69362-ty-dong-trai-phieu-chinh-phu-dat-173-ke-hoach-phat-hanh-thang-10.htm" }, { "name": "CafeF", "url": "https://cafef.vn/9-ngan-hang-xuc-tien-ke-hoach-lap-ngan-hang-con-tai-vifc-188261108112628346.chn" }] },
+      { "text": "Ngân hàng: Thống đốc NHNN ký kế hoạch hành động xử lý tổ chức tín dụng yếu kém và hiện đại hóa hệ thống.",
+        "src": [{ "name": "CafeF", "url": "https://cafef.vn/thong-doc-nhnn-ky-quyet-dinh-moi-ve-xu-ly-ngan-hang-yeu-kem-hien-dai-hoa-he-thong-188261107160540406.chn" }] }
+    ] },
+    { "title": "Năm 2026: bức tranh chung", "points": [
+      { "text": "Kinh tế tăng trưởng gần 2 con số (9 tháng 9,01%), dẫn dắt bởi xuất khẩu và đầu tư công; 30/34 tỉnh thành được giao tăng trưởng từ 10% cho năm 2027.",
+        "src": [{ "name": "VietnamPlus", "url": "https://www.vietnamplus.vn/toc-do-tang-truong-gdp-chin-thang-nam-2026-uoc-dat-901-so-voi-cung-ky-post1139772.vnp" }, { "name": "CafeF", "url": "https://cafef.vn/giao-tang-truong-2-con-so-cho-30-tinh-thanh-hai-phong-cao-nhat-18826110715070392.chn" }] },
+      { "text": "Tín dụng tăng 11,59% đến 30/9 (quy năm ~15,5%), cao hơn tăng trưởng GDP danh nghĩa: thanh khoản trong nền kinh tế dồi dào.",
+        "src": [{ "name": "NHNN/VNBA", "url": "https://vnba.org.vn/vi/du-no-tin-dung-toan-he-thong-dat-khoang-20-75-trieu-ty-dong-tinh-den-30-9-2026-23786.htm" }] },
+      { "text": "Vàng thế giới lập đỉnh $5.318 (29/01) rồi giảm ~27% về $3.899 (30/10) khi Fed tăng lãi suất và USD mạnh lên; Ngân hàng Thế giới dự báo giá vàng, bạc giảm trong 2027–2028 nhưng vẫn cao hơn trung bình lịch sử.",
+        "src": [{ "name": "Vantage Markets", "url": "https://www.vantagemarkets.com/market-analysis/why-gold-fell-one-year-low-fed-hike-bets-liquidation-xauusd-november-2-2026/" }, { "name": "VnEconomy", "url": "https://vneconomy.vn/ngan-hang-the-gioi-du-bao-gia-vang-va-gia-bac-giam-trong-nam-2027-va-2028.htm" }] }
+    ] },
+    { "title": "Rủi ro cần theo dõi", "points": [
+      { "text": "Fed họp 08–09/12/2026, khả năng cao tăng tiếp: USD mạnh, áp lực lên tỷ giá và dòng vốn ngoại.",
+        "src": [{ "name": "CNBC", "url": "https://www.cnbc.com/2026/10/28/fed-interest-rate-decision-october-2026.html" }] },
+      { "text": "Lạm phát trong nước đang tăng (CPI 5,09%) trong khi lãi suất huy động giảm: lãi thực của tiết kiệm sẽ thu hẹp.",
+        "src": [{ "name": "Cục Thống kê", "url": "https://tapchikinhtetaichinh.vn/cpi-thang-10-tang-0-2-gia-luong-thuc-thuc-pham-va-du-lich-giam-171407.html" }] },
+      { "text": "Nguồn điện: nhu cầu 2027 dự báo tăng ~10% trong khi nguồn điện nền mới chưa kịp vận hành.",
+        "src": [{ "name": "CafeF", "url": "https://cafef.vn/bo-cong-thuong-trien-khai-8-giai-phap-bao-dam-cung-ung-dien-nam-2027-2028-188261108071250213.chn" }] }
+    ] }
+  ],
+  "sectors": [
+    { "name": "Xây dựng – hạ tầng – vật liệu", "horizon": "Ngắn – trung hạn", "match": ["Đầu tư công", "Xây dựng", "Hạ tầng", "Thép"],
+      "why": "Đầu tư công tăng 19,7%, 3 dự án cao tốc 162.393 tỷ, 5 tuyến metro TP.HCM; hai tháng cuối năm thường là đợt giải ngân dồn.",
+      "risk": "Chủ đề đã được thị trường đồng thuận, định giá có thể đã phản ánh; tiến độ giải ngân không đều.",
+      "src": [{ "name": "CafeF", "url": "https://cafef.vn/quoc-hoi-xem-xet-chu-truong-dau-tu-3-du-an-cao-toc-lon-188261108075801333.chn" }] },
+    { "name": "Năng lượng – điện", "horizon": "Trung – dài hạn", "match": ["Năng lượng"],
+      "why": "Nhu cầu điện 2027 tăng ~10%, thiếu nguồn điện nền; các dự án điện gió (Vân Canh 2, 7.700 tỷ) khởi công; điện hạt nhân đang được chuẩn bị.",
+      "risk": "Cơ chế giá điện và tiến độ dự án.",
+      "src": [{ "name": "CafeF", "url": "https://cafef.vn/bo-cong-thuong-trien-khai-8-giai-phap-bao-dam-cung-ung-dien-nam-2027-2028-188261108071250213.chn" }, { "name": "CafeF", "url": "https://cafef.vn/khoi-cong-nha-may-dien-gio-7700-ty-dong-tai-gia-lai-188261107161228259.chn" }] },
+    { "name": "Ngân hàng – chứng khoán", "horizon": "Trung hạn", "match": ["Ngân hàng", "Chứng khoán", "FTSE"],
+      "why": "Lãi suất huy động giảm hỗ trợ biên lợi nhuận và tín dụng; Việt Nam đã vào chỉ số FTSE; ngân hàng lập ngân hàng con tại VIFC.",
+      "risk": "Khối ngoại bán ròng nhóm ngân hàng; xử lý tổ chức tín dụng yếu kém; tín dụng ngoại tệ tăng nhanh.",
+      "src": [{ "name": "VnEconomy", "url": "https://vneconomy.vn/nen-theo-doi-ky-ra-soat-cua-ftse-russell-vao-thang-32027.htm" }, { "name": "CafeF", "url": "https://cafef.vn/9-ngan-hang-xuc-tien-ke-hoach-lap-ngan-hang-con-tai-vifc-188261108112628346.chn" }] },
+    { "name": "Xuất khẩu – khu công nghiệp – logistics", "horizon": "Trung hạn", "match": ["Khu công nghiệp", "Cảng biển", "FDI", "Logistics"],
+      "why": "Xuất khẩu tháng 10 tăng 51,43%, xuất siêu 7,31 tỷ USD; dòng vốn FDI vào sản xuất.",
+      "risk": "Chính sách thuế quan của Mỹ; chi phí logistics còn cao.",
+      "src": [{ "name": "CafeF/KIS", "url": "https://cafef.vn/kis-research-xuat-sieu-731-ty-usd-xuat-khau-dan-dat-tang-truong-188261107091739715.chn" }] },
+    { "name": "Công nghệ – AI – chuyển đổi số", "horizon": "Dài hạn", "match": ["Công nghệ"],
+      "why": "Ưu tiên chính sách về khoa học công nghệ, đổi mới sáng tạo và chuyển đổi số (Nghị quyết 57-NQ/TW); doanh nghiệp đầu tư hạ tầng AI (FPT AI Factory).",
+      "risk": "Định giá cao; cạnh tranh nhân lực.",
+      "src": [{ "name": "CafeF", "url": "https://cafef.vn/fpt-ai-factory-duoc-vinh-danh-tai-giai-thuong-tri-tue-nhan-tao-viet-nam-2026-188261106195055665.chn" }] },
+    { "name": "Tiêu dùng – bán lẻ", "horizon": "Trung hạn", "match": ["Bán lẻ", "Tiêu dùng"],
+      "why": "Giảm thuế thu nhập cá nhân (Nghị định 398/2026) và tăng lương tối thiểu từ 2027 hỗ trợ sức mua.",
+      "risk": "Lạm phát tăng bào mòn thu nhập thực.",
+      "src": [{ "name": "CafeF", "url": "https://cafef.vn/toan-van-nghi-dinh-398-2026-nd-cp-ve-giam-thue-thu-nhap-ca-nhan-thue-thu-nhap-doanh-nghiep-188261107152035278.chn" }] }
+  ]
+}
