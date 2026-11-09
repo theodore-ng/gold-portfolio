@@ -2,6 +2,10 @@
 
 Phiên bản theo semver: sửa lỗi và điều chỉnh nhỏ → patch, cập nhật lớn → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
 
+## 1.0.4 – 09/11/2026
+
+- Thanh tiêu đề: bỏ đơn vị "tr/lượng" cạnh giá vàng (đơn vị hiện trong chú thích khi rê chuột).
+
 ## 1.0.3 – 09/11/2026
 
 - Thanh tiêu đề: giá vàng SJC mua/bán hôm nay kèm ▲ xanh / ▼ đỏ / ■ đứng giá so với phiên trước (thay dòng nguồn giá; nguồn và giờ cập nhật hiện khi rê chuột).

@@ -240,8 +240,8 @@ function render() {
   // Thanh tiêu đề: giá vàng SJC mua/bán hôm nay, tăng/giảm so với phiên trước
   const Y = P.history.length > 1 ? P.history.at(-2) : null;
   const gp = (label, now, before) => `<span class="gp"><span class="muted">${label}</span> <b>${nf(now, 1)}</b>${before ? " " + chg(now - before, nf(Math.abs(now - before), 1)) : ""}</span>`;
-  $("#priceStamp").innerHTML = `<span class="muted">Vàng SJC</span>${gp("Mua", L.sjc_buy, Y?.sjc_buy)}${gp("Bán", L.sjc_sell, Y?.sjc_sell)}<span class="muted">tr/lượng</span>`;
-  $("#priceStamp").title = `So với ${fmtDate(prevDate)} · giá ${livePNJ ? "trực tiếp PNJ" : "theo file giá"} · vàng thế giới cập nhật ${P.updated ? new Date(P.updated).toLocaleString("vi-VN") : "—"}`;
+  $("#priceStamp").innerHTML = `<span class="muted">Vàng SJC</span>${gp("Mua", L.sjc_buy, Y?.sjc_buy)}${gp("Bán", L.sjc_sell, Y?.sjc_sell)}`;
+  $("#priceStamp").title = `Triệu đồng/lượng · so với ${fmtDate(prevDate)} · giá ${livePNJ ? "trực tiếp PNJ" : "theo file giá"} · vàng thế giới cập nhật ${P.updated ? new Date(P.updated).toLocaleString("vi-VN") : "—"}`;
   const dayD = total - prevTotal, dayTxt = `${chg(dayD, `${money(Math.abs(dayD))} (${pct(prevTotal ? total / prevTotal - 1 : 0)})`)} so với ${fmtDate(prevDate)}`;
   $("#kTotal").textContent = money(total);
   $("#kDay").innerHTML = dayTxt;
