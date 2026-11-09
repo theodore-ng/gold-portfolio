@@ -1,10 +1,12 @@
-// Tab chính theo hash (#info, #assets, #me, #about): nút Back và link chia sẻ vẫn hoạt động.
+// Tab chính theo hash (#portfolio, #market, #strategy, #execution, #account): nút Back và link chia sẻ vẫn hoạt động.
 // Mỗi tab có mục con (.subnav button[data-sub] ↔ .subpage[data-sub]); mục con đang mở được nhớ theo từng tab.
 (() => {
   const SUB_KEY = "quyvang_sub";
   const panels = [...document.querySelectorAll(".panel[data-tab]")];
   const ids = panels.map((p) => p.dataset.tab);
   const panelOf = (id) => panels.find((p) => p.dataset.tab === id);
+  // Hash của bố cục cũ (trước 11/2026) → tab mới, để link/bookmark cũ vẫn mở đúng chỗ
+  const OLD = { info: "market", assets: "portfolio", me: "portfolio", about: "account" };
   let subs = {};
   try { subs = JSON.parse(localStorage.getItem(SUB_KEY)) || {}; } catch { /* bỏ qua */ }
 
@@ -19,6 +21,7 @@
   }
 
   function show(id) {
+    if (OLD[id]) { id = OLD[id]; history.replaceState(null, "", "#" + id); }
     if (!ids.includes(id)) id = ids[0];
     panels.forEach((p) => (p.hidden = p.dataset.tab !== id));
     document.querySelectorAll("#tabbar a").forEach((a) => a.classList.toggle("on", a.hash === "#" + id));

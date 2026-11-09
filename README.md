@@ -1,6 +1,8 @@
-# Quản lý tài sản
+# Quản trị Vốn (Capital Management)
 
-Web app cá nhân quản lý danh mục **vàng, tiền mặt, tiết kiệm, chứng khoán và tài sản khác** và chuyển dần sang danh mục tối ưu theo phương pháp **CFA**, có điều chỉnh theo dữ liệu thị trường Việt Nam và thế giới.
+<img src="logo.svg" width="64" alt="">
+
+Web app cá nhân quản trị danh mục **vàng, tiền mặt, tiết kiệm, chứng khoán và tài sản khác** và chuyển dần sang danh mục tối ưu theo phương pháp **CFA**, có điều chỉnh theo dữ liệu thị trường Việt Nam và thế giới.
 
 🔗 **https://theodore-ng.github.io/gold-portfolio/**
 
@@ -10,17 +12,22 @@ Web app cá nhân quản lý danh mục **vàng, tiền mặt, tiết kiệm, ch
 
 ## Tính năng
 
-| Mục | Nội dung |
-|---|---|
-| **Tổng quan** | Tổng tài sản, thay đổi so với hôm trước, lãi/lỗ (chưa chốt, đã chốt, lãi tiết kiệm), giá SJC mua/bán và premium so với thế giới |
-| **Lộ trình bán vàng** | Số lượng giữ lại theo hồ sơ phân bổ, lịch bán theo tháng và ngày dự kiến hoàn tất. Mỗi đợt tăng/giảm/tạm dừng theo premium SJC và giá vàng thế giới |
-| **Định hướng phân bổ** | Thẻ so sánh "Giữ nguyên" với 3 hồ sơ tối ưu (Thận trọng / Cân bằng / Tăng trưởng), có biểu đồ tròn. Nhãn *Đề xuất* theo mức chấp nhận rủi ro của người dùng. Bảng "Cần làm" cho từng lớp tài sản |
-| **Hướng dẫn giải ngân** | Số tiền và số chứng chỉ quỹ ETF cần mua mỗi tháng (DCA), top quỹ mở cổ phiếu và trái phiếu, danh sách cổ phiếu đáng quan tâm kèm P/E, P/B, ROE, tăng trưởng lợi nhuận và cảnh báo rủi ro đặc thù |
-| **So sánh dự án và giữ nguyên** | Mô phỏng Monte Carlo 2.000 kịch bản (1/3/5/10 năm): trung vị, kịch bản xấu/tốt, sụt giảm tối đa, thu nhập thụ động, giá trị theo sức mua, điểm hòa giá vàng |
-| **Vĩ mô & dòng tiền** | Kinh tế VN (GDP, CPI, tín dụng, đầu tư công, lãi tiết kiệm), dòng tiền liên thị trường, rủi ro suy thoái (đường cong lợi suất, quy tắc Sahm, VIX, chênh lệch trái phiếu rủi ro cao…) |
-| **Lạm phát & sức mua** | Lợi suất thực của tiền mặt, tiết kiệm, vàng và cả quỹ; giá trị quỹ danh nghĩa so với sức mua; lạm phát VN theo năm |
-| **Giao dịch** | Ghi nhận bán vàng (trừ theo lô cũ trước – FIFO), mua thêm lô, gửi/tất toán tiết kiệm, thu/chi tiền mặt, xóa giao dịch nhập sai |
-| **Tài khoản** | Đăng nhập Supabase, dữ liệu đồng bộ giữa các thiết bị; xuất/nhập file sao lưu JSON |
+Cấu trúc theo quy trình quản lý danh mục (CFA): lập kế hoạch → thực thi → theo dõi và đánh giá.
+
+| Tab | Mục | Nội dung |
+|---|---|---|
+| **Danh mục** | Tổng quan | Giá trị tài sản ròng (NAV), thay đổi so với hôm trước, lãi/lỗ lũy kế (chưa chốt, đã chốt, lãi tiền gửi), giá SJC mua/bán và premium, cơ cấu tài sản hiện tại |
+| | Nắm giữ & giao dịch | Mỗi lớp tài sản một khối: khớp số thực tế, bán vàng (FIFO), mua lô, gửi/tất toán tiền gửi, thu/chi tiền mặt, chứng khoán, lịch sử giao dịch |
+| | Hiệu quả | Diễn biến giá trị danh mục; kiểm định quá khứ: nếu đã tái cơ cấu theo phân bổ chiến lược từ 1/6/12 tháng trước, chia theo từng lớp tài sản |
+| **Thị trường** | Tin tức | Tin kinh tế CafeF, Vietstock, VnEconomy (RSS), chủ đề nóng 7 ngày |
+| | Vĩ mô & dòng tiền | Nhận định quý, chu kỳ kinh tế, kinh tế VN, dòng tiền liên thị trường, ngành được tập trung đầu tư, rủi ro suy thoái, lạm phát & sức mua |
+| | Vàng Việt Nam | Premium so với thế giới, chênh lệch mua–bán, cung cầu, độ ổn định, mốc xác nhận đáy sau đỉnh, bảng yếu tố kỳ vọng, bối cảnh chính sách |
+| **Chiến lược** | Phân bổ chiến lược | Giả định kỳ vọng thị trường (CME); so sánh hiện trạng với 3 phân bổ tối ưu theo khẩu vị rủi ro (Thận trọng / Cân bằng / Tăng trưởng) |
+| | Dự phóng | Monte Carlo 2.000 kịch bản (1/3/5/10 năm): danh mục mục tiêu so với hiện trạng, kịch bản xấu/tốt, sụt giảm tối đa, thu nhập thụ động, điểm hòa giá vàng |
+| **Thực thi** | Việc cần làm | Việc cần làm trong ngày, rà soát danh mục (tính trên trình duyệt) |
+| | Giảm tỷ trọng vàng | Số lượng giữ lại, lịch bán theo tháng; mỗi đợt tăng/giảm/tạm dừng theo premium SJC và giá vàng thế giới |
+| | Giải ngân | Số tiền và số chứng chỉ quỹ ETF mua mỗi tháng (DCA), quỹ mở, cổ phiếu đáng quan tâm kèm chỉ số tài chính và cảnh báo rủi ro |
+| **Tài khoản** | | Đăng nhập Supabase, đồng bộ giữa các thiết bị, xuất/nhập sao lưu JSON; giới thiệu |
 
 ## Phương pháp phân bổ (CFA Level III)
 

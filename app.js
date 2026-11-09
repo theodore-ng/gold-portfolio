@@ -1,5 +1,5 @@
 "use strict";
-/* Quản lý tài sản (trước đây: Quỹ Vàng): theo dõi danh mục vàng/tiền mặt/tiết kiệm/chứng khoán và lộ trình bán vàng.
+/* Quản trị Vốn – Capital Management (trước đây: Quản lý tài sản, Quỹ Vàng): theo dõi danh mục vàng/tiền mặt/tiết kiệm/chứng khoán và lộ trình bán vàng.
    Dữ liệu cá nhân chỉ nằm trong localStorage của trình duyệt. Đơn vị tiền: triệu VND. */
 
 const KEY = "quyvang_v1";
@@ -243,15 +243,15 @@ function render() {
   const g = glide(st), gs = S.settings;
   const plan = g.sold + g.remaining;
   $("#glideBar").style.width = (plan ? (g.sold / plan) * 100 : 100) + "%";
-  const keepTxt = `giữ lại ${nf(g.gk.keep, 0)} lượng (${g.gk.floored ? `mức tối thiểu trong cài đặt; hồ sơ tính ≈ ${nf(g.gk.exact, 1)}` : `hồ sơ ${PROFILES[g.gk.profile].name}: ≈ ${nf(g.gk.exact, 1)} lượng, làm tròn`})`;
+  const keepTxt = `giữ lại ${nf(g.gk.keep, 0)} lượng (${g.gk.floored ? `mức tối thiểu trong cài đặt; phân bổ chiến lược tính ≈ ${nf(g.gk.exact, 1)}` : `khẩu vị ${PROFILES[g.gk.profile].name}: ≈ ${nf(g.gk.exact, 1)} lượng, làm tròn`})`;
   $("#glideProgress").textContent = `Đã bán ${nf(g.sold, 2)} / ${nf(plan, 2)} lượng · ${keepTxt} · còn ${nf(g.remaining, 2)} lượng`;
   let adv;
-  if (g.remaining <= 0) adv = "✅ Đã hoàn tất lộ trình bán vàng.";
+  if (g.remaining <= 0) adv = "✅ Đã hoàn tất kế hoạch giảm tỷ trọng vàng.";
   else if (g.qty === 0) adv = `⏸ Tháng này: tạm dừng bán. ${g.why}.`;
   else if (g.left === 0) adv = `✅ Tháng này đã bán ${nf(g.soldThisMonth, 2)} lượng, đủ đợt đề xuất (${nf(g.qty, 2)}). Đợt tiếp theo: tháng sau.`;
   else adv = `Đợt tháng này: <b>${nf(g.left, 2)} lượng</b> (≈ ${money(g.left * L.sjc_buy)})${g.soldThisMonth ? `, đã bán ${nf(g.soldThisMonth, 2)}` : ""}. Lý do: ${esc(g.why)}.`;
   $("#glideAdvice").innerHTML = adv;
-  $("#glideHead").innerHTML = `Hồ sơ đang áp dụng: <b>${esc(PROFILES[planCfg().profile]?.name || "")}</b> → giữ <b>${nf(g.gk.keep, 0)} lượng</b>, cần bán <b>${nf(g.remaining, 2)} lượng</b>. Đổi hồ sơ ở <a href="#info" data-focus="profileCards">Thông tin › Đề xuất</a>.`;
+  $("#glideHead").innerHTML = `Khẩu vị rủi ro đang áp dụng: <b>${esc(PROFILES[planCfg().profile]?.name || "")}</b> → giữ <b>${nf(g.gk.keep, 0)} lượng</b>, cần bán <b>${nf(g.remaining, 2)} lượng</b>. Đổi khẩu vị rủi ro ở <a href="#strategy" data-focus="profileCards">Chiến lược › Phân bổ chiến lược</a>.`;
 
   // Lịch bán dự kiến: tháng này theo tín hiệu hiện tại, các tháng sau theo nhịp cơ bản
   const sched = [];
@@ -266,7 +266,7 @@ function render() {
   $("#glideSchedule").innerHTML = g.remaining <= 0 ? "" :
     `<div class="chips">${sched.map((s) => `<span class="sch${s.now ? " now" : ""}${s.pause ? " pause" : ""}"><small>${s.label}</small><b>${s.pause ? "dừng" : nf(s.q, s.q % 1 ? 1 : 0) + " lượng"}</b></span>`).join("")}</div>
      <p class="muted small">Dự kiến hoàn tất: <b>${sched.at(-1)?.label || "—"}</b> (${sched.length} tháng). Các tháng sau tính theo nhịp cơ bản ${gs.tranche} lượng/tháng; khi đến kỳ sẽ tăng/giảm theo premium và giá vàng.</p>`;
-  $("#glideRule").textContent = `Số lượng giữ lại đi theo hồ sơ phân bổ đang chọn. Quy tắc (chỉnh ở mục bên dưới): ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
+  $("#glideRule").textContent = `Số lượng giữ lại đi theo phân bổ chiến lược đang chọn. Quy tắc (chỉnh ở mục bên dưới): ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
 
   renderTodo(st, g, L);
   renderAdjust(st);
@@ -284,25 +284,25 @@ function renderTodo(st, g, L) {
   const items = [], d = today();
   if (g.remaining > 0) {
     if (g.qty === 0) items.push({ ic: "⏸", t: "Tạm dừng bán vàng tháng này", s: g.why });
-    else if (g.left > 0) items.push({ act: 1, ic: "↓", t: `Bán ${nf(g.left, 2)} lượng vàng (đợt tháng này, ≈ ${money(g.left * L.sjc_buy)})`, s: g.why, go: ["me", "sellForm", "Ghi bán"] });
+    else if (g.left > 0) items.push({ act: 1, ic: "↓", t: `Bán ${nf(g.left, 2)} lượng vàng (đợt tháng này, ≈ ${money(g.left * L.sjc_buy)})`, s: g.why, go: ["portfolio", "sellForm", "Ghi bán"] });
     else items.push({ done: 1, ic: "✓", t: `Đã đủ đợt bán vàng tháng này (${nf(g.soldThisMonth, 2)} lượng)`, s: "Đợt tiếp theo: tháng sau" });
   }
   for (const x of st.deps) {
     const m = depMature(x);
-    if (!x.closed && m <= d) items.push({ act: 1, ic: "₫", t: `Tất toán tiết kiệm ${x.bank} (đáo hạn ${fmtDate(m)})`, s: `Gốc ${money(x.amount)}, sau đó tái tục hoặc phân bổ theo đề xuất`, go: ["me", "adjDeps", "Tất toán"] });
+    if (!x.closed && m <= d) items.push({ act: 1, ic: "₫", t: `Tất toán tiết kiệm ${x.bank} (đáo hạn ${fmtDate(m)})`, s: `Gốc ${money(x.amount)}, sau đó tái tục hoặc phân bổ theo đề xuất`, go: ["portfolio", "adjDeps", "Tất toán"] });
   }
   const unk = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
-  if (unk > 0) items.push({ act: 1, ic: "?", t: `Nhập giá vốn cho ${nf(unk, 2)} lượng vàng`, s: "Để tính đúng lãi/lỗ", go: ["me", "adjLots", "Nhập"] });
+  if (unk > 0) items.push({ act: 1, ic: "?", t: `Nhập giá vốn cho ${nf(unk, 2)} lượng vàng`, s: "Để tính đúng lãi/lỗ", go: ["portfolio", "adjLots", "Nhập"] });
   const noPx = (S.sec || []).filter((h) => { const s = secPx(h).src; return !s || (s === "giá vốn" && h.type !== "bond"); });
-  if (noPx.length) items.push({ act: 1, ic: "?", t: `Nhập giá hiện tại cho ${noPx.map((h) => h.code).join(", ")}`, s: "Không có trong dữ liệu giá tự động, đang tạm tính theo giá vốn", go: ["me", "secAdjust", "Nhập"] });
-  if (st.cash >= 1) items.push({ act: 1, ic: "→", t: `Tiền mặt ${money(st.cash)}: giữ phần quỹ khẩn cấp, phân bổ phần còn lại`, s: "Gửi tiết kiệm hoặc giải ngân theo bảng đề xuất", go: ["info", "planTable", "Xem"] });
-  $("#todoHead").textContent = `Việc cần làm hôm nay · ${fmtDate(d)}`;
+  if (noPx.length) items.push({ act: 1, ic: "?", t: `Nhập giá hiện tại cho ${noPx.map((h) => h.code).join(", ")}`, s: "Không có trong dữ liệu giá tự động, đang tạm tính theo giá vốn", go: ["portfolio", "secAdjust", "Nhập"] });
+  if (st.cash >= 1) items.push({ act: 1, ic: "→", t: `Tiền mặt ${money(st.cash)}: giữ phần quỹ khẩn cấp, phân bổ phần còn lại`, s: "Gửi tiết kiệm hoặc giải ngân theo bảng đề xuất", go: ["strategy", "planTable", "Xem"] });
+  $("#todoHead").textContent = `Việc cần làm · ${fmtDate(d)}`;
   $("#todoList").innerHTML = items.length
     ? items.map((i) => `<li class="${i.act ? "act" : i.done ? "done" : ""}"><span class="ic">${i.ic}</span><div class="tx">${esc(i.t)}<small>${esc(i.s || "")}</small></div>${i.go ? `<a href="#${i.go[0]}" data-focus="${i.go[1]}">${i.go[2]} ›</a>` : ""}</li>`).join("")
     : `<li class="done"><span class="ic">✓</span><div class="tx">Không có việc cần làm hôm nay.</div></li>`;
 }
 
-/* ---------- Cá nhân › Tài sản & giao dịch ----------
+/* ---------- Danh mục › Nắm giữ & giao dịch ----------
    Ô sửa trực tiếp: data-edit="src:id:field" (src = init → S.lots, tx → S.tx, sec → S.sec).
    Cột: [field, nhãn, kiểu]; kiểu: num | date | text | sel:giá trị=nhãn,... | code (mã, gợi ý từ dữ liệu). */
 const SEC_GROUPS = {

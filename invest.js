@@ -26,8 +26,8 @@ function renderInvest(st) {
   });
   const below = ETF_SPLIT.some(([c]) => (etf[c]?.vsMa200 ?? 0) < 0);
   const eqHtml = eqNeed < 1
-    ? `<p class="muted">Hồ sơ ${esc(PROFILES[p.profile].name)} hiện không cần thêm cổ phiếu lõi.</p>`
-    : `<p>Cần giải ngân <b>${money(eqNeed)}</b> vào cổ phiếu lõi (hồ sơ ${esc(PROFILES[p.profile].name)}). Chia đều <b>${months} tháng</b> (DCA) → <b>${money(perMonth)}/tháng</b>:</p>
+    ? `<p class="muted">Khẩu vị ${esc(PROFILES[p.profile].name)} hiện không cần thêm cổ phiếu lõi.</p>`
+    : `<p>Cần giải ngân <b>${money(eqNeed)}</b> vào cổ phiếu lõi (khẩu vị ${esc(PROFILES[p.profile].name)}). Chia đều <b>${months} tháng</b> (DCA) → <b>${money(perMonth)}/tháng</b>:</p>
       <div class="tablewrap"><table><tr><th>ETF</th><th>Giá (nghìn)</th><th>So MA200</th><th>1 năm</th><th>Tỷ lệ</th><th>Mỗi tháng</th><th>Số CCQ mỗi tháng</th></tr>${etfRows.join("")}</table></div>
       <p class="muted small">Mua bằng tài khoản chứng khoán (SSI, VNDirect, TCBS, VPS…). Lô chẵn ${LOT} CCQ, phần lẻ đặt ở bảng lô lẻ. Phí giao dịch ~0,1–0,15%, thuế 0,1% khi bán. ${below ? "Các ETF đang dưới MA200: giữ nhịp DCA đều, không mua dồn một lần." : ""}</p>`;
 

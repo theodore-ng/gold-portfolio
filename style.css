@@ -16,7 +16,8 @@ h1, h2 { font-weight: 600; }
 header { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--ink); }
 .headin { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 16px; max-width: 1100px; margin: auto; }
 h1 { margin: 0; font-size: 24px; letter-spacing: -.01em; }
-h1::before { content: "◆ "; color: var(--accent); }
+h1 { display: flex; align-items: center; gap: 8px; }
+h1 .logo { width: 30px; height: 30px; image-rendering: pixelated; flex: none; }
 h2 { margin: 0 0 12px; font-size: 18px; }
 main { max-width: 1100px; margin: auto; padding: 8px 16px 40px; display: flex; flex-direction: column; gap: 14px; }
 #app, .panel { display: flex; flex-direction: column; gap: 14px; }

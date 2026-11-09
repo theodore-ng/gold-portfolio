@@ -219,7 +219,7 @@ function renderOutlook() {
       <td class="tip">${esc(s.why)}${s.src?.length ? ` <small>(${srcLinks(s.src)})</small>` : ""}${s.risk ? `<br><span class="warn small">Rủi ro: ${esc(s.risk)}</span>` : ""}</td>
       <td>${tickers(s).join(", ") || "—"}</td></tr>`).join("")}</table></div>
     ${ph ? `<p class="small">Theo pha chu kỳ hiện tại (<b>${ph.name}</b>), các ngành thường hưởng lợi: ${ph.sectors}.</p>` : ""}
-    <p class="muted small">"Mã theo dõi" lấy từ danh sách cổ phiếu ở Đề xuất › Hướng dẫn giải ngân, không phải khuyến nghị mua.</p>`;
+    <p class="muted small">"Mã theo dõi" lấy từ danh sách cổ phiếu ở Thực thi › Giải ngân, không phải khuyến nghị mua.</p>`;
 }
 
 /* ---------- Tin tức (data/news.json: RSS CafeF, Vietstock, VnEconomy qua GitHub Actions) ---------- */
@@ -267,7 +267,7 @@ function bindMacro() {
   };
 }
 
-/* ---------- Vàng Việt Nam: premium so với thế giới, chênh lệch mua–bán, cung cầu, độ ổn định, kỳ vọng (Tài sản › Phân tích) ---------- */
+/* ---------- Vàng Việt Nam: premium so với thế giới, chênh lệch mua–bán, cung cầu, độ ổn định, kỳ vọng (Thị trường › Vàng Việt Nam) ---------- */
 let goldVNKey = null;
 const median = (a) => { const s = [...a].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
 const stdev = (a) => { const n = a.length; if (n < 2) return null; const m = a.reduce((s, x) => s + x, 0) / n; return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (n - 1)); };

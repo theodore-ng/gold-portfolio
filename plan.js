@@ -212,7 +212,7 @@ function passiveIncome(mix, p) { // tr/năm, năm đầu
   return mix.dep * depNow(p) / 100 + mix.cash * p.rCash / 100 + mix.bond * (INV?.bondMedian12m ?? p.rBond) / 100 + mix.equity * p.divEq / 100;
 }
 
-/** Vàng cần tăng bao nhiêu %/năm để giữ nguyên hòa với dự án (theo trung vị). */
+/** Vàng cần tăng bao nhiêu %/năm để hiện trạng hòa với mục tiêu (theo trung vị). */
 function breakeven(A, B, years, p) {
   let lo = -10, hi = 40;
   const diff = (r) => { const s = simulate(A, B, years, { ...p, rGold: r }, 400); return s.A[s.n][1] - s.B[s.n][1]; };
@@ -226,7 +226,7 @@ let profileCardKey = "";
 function renderProfileCards(cur, total, p) {
   const y = p.horizon, defl = Math.pow(1 + p.infl / 100, y);
   // Mọi thẻ có cùng cấu trúc và cùng số dòng (tiêu đề, biểu đồ, 6 lớp tài sản, 7 chỉ số) để CSS subgrid căn thẳng hàng
-  const cards = [{ key: "cur", name: "Giữ nguyên (hiện tại)", mix: cur, base: true }]
+  const cards = [{ key: "cur", name: "Hiện trạng", mix: cur, base: true }]
     .concat(Object.keys(PROFILES).map((k) => ({ key: k, name: PROFILES[k].name, mix: targetMix(total, k) })));
   for (const c of cards) {
     const sim = simulate(cur, c.mix, y, p, 600), f = c.base ? sim.A[sim.n] : sim.B[sim.n];
@@ -237,7 +237,7 @@ function renderProfileCards(cur, total, p) {
       ["Kịch bản xấu 5%", money(f[0])],
       ["Sụt giảm tối đa", pct(c.base ? sim.mddA : sim.mddB)],
       ["Thu nhập thụ động", money(passiveIncome(c.mix, p) / 12) + "/th"],
-      ["Hơn giữ nguyên", c.base ? "—" : nf(sim.beat * 100, 0) + "% kịch bản"],
+      ["Hơn hiện trạng", c.base ? "—" : nf(sim.beat * 100, 0) + "% kịch bản"],
     ];
   }
   $("#profileCards").innerHTML = cards.map((c) => `
@@ -294,9 +294,9 @@ function renderPlan(st) {
       ${OPT_KEYS.map((k) => `<tr><td>${LABEL[k]}</td><td>${nf(c.r[k], 2)}%</td><td>${nf(c.v[k], 1)}%</td><td class="tip">${esc(c.notes[k])}</td></tr>`).join("")}</table></div>
     <p class="small"><b>Bước 2 – Tối ưu hóa:</b> chọn tỷ trọng làm U = E(R) − ½·λ·σ² lớn nhất (lợi nhuận đã trừ "chi phí" rủi ro theo mức bạn chấp nhận), với ràng buộc: tiền mặt + tiết kiệm ≥ ${b.liquid[0]}% (quỹ khẩn cấp), vàng ${b.gold[0]}–${b.gold[1]}%, cổ phiếu ≤ ${b.equity[1]}%, vệ tinh ≤ ${b.sat[1]}%.</p>
     <p class="small"><b>Kết quả:</b> ${frontier}.</p>
-    <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở <a href="#assets" data-focus="assumeForm">Tài sản › Phân tích › Giả định</a>.</p>` +
-    (p.profile !== p.risk ? `<p class="advice small">Bạn đang áp dụng hồ sơ <b>${esc(PROFILES[p.profile].name)}</b>, khác với mức rủi ro bạn chọn (${esc(PROFILES[p.risk].name)}). <button type="button" class="ghost" data-apply-rec>Áp dụng đề xuất</button></p>` : "");
-  $("#planNote").textContent = `Bảng trên là các bước điều chỉnh để danh mục khớp với hồ sơ ${PROFILES[p.profile].name}. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo lộ trình bán vàng ở trên.`;
+    <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở <a href="#strategy" data-focus="assumeForm">Chiến lược › Giả định CME</a>.</p>` +
+    (p.profile !== p.risk ? `<p class="advice small">Bạn đang áp dụng khẩu vị <b>${esc(PROFILES[p.profile].name)}</b>, khác với mức rủi ro bạn chọn (${esc(PROFILES[p.risk].name)}). <button type="button" class="ghost" data-apply-rec>Áp dụng đề xuất</button></p>` : "");
+  $("#planNote").textContent = `Bảng trên là các bước điều chỉnh để danh mục khớp với khẩu vị ${PROFILES[p.profile].name}. Chuyển dần trong 12–18 tháng, không làm một lần; vàng bán theo kế hoạch giảm tỷ trọng vàng (Thực thi).`;
 
   if (analysisAt) { analysisAt = new Date(); renderAnalysis(st); } // đã bấm Phân tích: cập nhật theo dữ liệu mới
 
@@ -315,13 +315,13 @@ function renderPlan(st) {
   renderCompare(sim, cur, tgt, total, p);
   const be = breakeven(cur, tgt, p.horizon, p);
   $("#cmpBreakeven").innerHTML = be == null
-    ? "Với các giả định này, giữ nguyên khó vượt dự án ngay cả khi vàng tăng 40%/năm."
-    : `Điểm hòa: vàng thế giới cần tăng khoảng <b>${nf(be, 1)}%/năm</b> (trung vị, đã tính premium SJC co về ${nf(p.premTarget, 0)}%) thì giữ nguyên mới bằng dự án sau ${p.horizon} năm. ` +
-      (be > p.rGold ? `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, nên theo dự án có lợi thế.` : `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, cao hơn điểm hòa, nên giữ nguyên đang có lợi thế về trung vị nhưng rủi ro tập trung cao hơn.`) +
+    ? "Với các giả định này, hiện trạng khó vượt mục tiêu ngay cả khi vàng tăng 40%/năm."
+    : `Điểm hòa: vàng thế giới cần tăng khoảng <b>${nf(be, 1)}%/năm</b> (trung vị, đã tính premium SJC co về ${nf(p.premTarget, 0)}%) thì hiện trạng mới bằng mục tiêu sau ${p.horizon} năm. ` +
+      (be > p.rGold ? `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, nên mục tiêu có lợi thế.` : `Giả định hiện tại là ${nf(p.rGold, 1)}%/năm, cao hơn điểm hòa, nên hiện trạng đang có lợi thế về trung vị nhưng rủi ro tập trung cao hơn.`) +
       ` Để so sánh: 10 năm qua vàng quy VND tăng ~14%/năm, là giai đoạn đặc biệt mạnh.`;
 }
 
-/* ---------- Chuyển dịch quỹ: nếu đã chuyển sang cơ cấu dự án từ 1/6/12 tháng trước ---------- */
+/* ---------- Kiểm định quá khứ (backtest): nếu đã chuyển sang cơ cấu dự án từ 1/6/12 tháng trước ---------- */
 const BT_WINDOWS = [[1, "1 tháng", "chg1m"], [6, "6 tháng", "chg6m"], [12, "1 năm", "chg1y"]];
 const BT_KEYS = ["gold", "cash", "dep", "bond", "equity", "sat"];
 const BT_LABEL = { gold: "Vàng SJC", cash: "Tiền mặt", dep: "Tiết kiệm", bond: "Quỹ trái phiếu", equity: "Cổ phiếu lõi", sat: "Vệ tinh" };
@@ -358,7 +358,7 @@ function renderBacktest(cur, tgt) {
   };
   const W = BT_WINDOWS.map(([mo, label, key]) => { const w = { mo, label, ...pastReturns(mo, key, p) }; w.c = calc(w); return w; });
 
-  $("#btTable").innerHTML = `<tr><th>Nếu chuyển từ</th><th>Quỹ lúc đó</th><th>Giữ nguyên (hôm nay)</th><th>Theo dự án (hôm nay)</th><th>Chênh lệch</th></tr>` +
+  $("#btTable").innerHTML = `<tr><th>Nếu tái cơ cấu từ</th><th>Giá trị lúc đó</th><th>Hiện trạng (hôm nay)</th><th>Mục tiêu (hôm nay)</th><th>Chênh lệch</th></tr>` +
     W.map((w) => {
       const lab = `${w.label} trước <span class="muted small">(${fmtDate(w.d0)}${w.est ? ", giá vàng ước tính" : ""})</span>`;
       if (!w.c) return `<tr><td>${lab}</td><td colspan="4" class="muted" style="text-align:center">chưa đủ số liệu</td></tr>`;
@@ -368,9 +368,9 @@ function renderBacktest(cur, tgt) {
     }).join("");
   const last = [...W].reverse().find((w) => w.c);
   $("#btNote").innerHTML = !last ? "Chưa đủ số liệu thị trường để tính."
-    : `Nếu đã chuyển sang hồ sơ đang chọn từ ${last.label} trước, quỹ hôm nay sẽ ${last.c.B >= V ? "cao" : "thấp"} hơn giữ nguyên khoảng <b>${money(Math.abs(last.c.B - V))}</b>. ` +
+    : `Nếu đã tái cơ cấu theo phân bổ chiến lược đang chọn từ ${last.label} trước, danh mục hôm nay sẽ ${last.c.B >= V ? "cao" : "thấp"} hơn hiện trạng khoảng <b>${money(Math.abs(last.c.B - V))}</b>. ` +
       `Kết quả nhìn lại phụ thuộc mạnh vào diễn biến vàng trong giai đoạn đó, nên dùng để hiểu rủi ro tập trung chứ không để đoán tương lai.`;
-  $("#btSum").textContent = last ? `Từ ${last.label} trước: dự án ${signed(last.c.B - V)}` : "";
+  $("#btSum").textContent = last ? `Từ ${last.label} trước: mục tiêu ${signed(last.c.B - V)}` : "";
 
   // Cơ cấu từng lớp cho một mốc
   if (!W.some((w) => w.mo === btWin && w.c)) btWin = last ? last.mo : 12;
@@ -381,13 +381,13 @@ function renderBacktest(cur, tgt) {
   const luong = (v) => (c.sjc0 ? `<br><span class="muted small">${nf(v / c.sjc0, 2)} lượng</span>` : "");
   const span = (a, b, k) => (a < 0.05 && b < 0.05 ? `<span class="muted">—</span>` : `${money(a)} → ${money(b)}${k === "gold" ? luong(a) : ""}`);
   const keys = BT_KEYS.filter((k) => cur[k] || tgt[k]);
-  $("#btClass").innerHTML = `<tr><th>Lớp</th><th>Lợi nhuận ${w.label}</th><th>Giữ nguyên: lúc đó → hôm nay</th><th>Theo dự án: lúc đó → hôm nay</th><th>Chênh lệch hôm nay</th></tr>` +
+  $("#btClass").innerHTML = `<tr><th>Lớp</th><th>Lợi nhuận ${w.label}</th><th>Hiện trạng: lúc đó → hôm nay</th><th>Mục tiêu: lúc đó → hôm nay</th><th>Chênh lệch hôm nay</th></tr>` +
     keys.map((k) => { const d = c.pe[k] - (cur[k] || 0);
       return `<tr><td>${BT_LABEL[k]}</td><td>${pc(w.r[k])}</td><td>${span(c.past[k], cur[k] || 0, k)}</td><td>${span(c.ps[k], c.pe[k], k)}</td><td class="${Math.abs(d) < 0.05 ? "muted" : d > 0 ? "up" : "down"}">${signed(d)}</td></tr>`; }).join("") +
     `<tr><td><b>Tổng</b></td><td></td><td><b>${money(c.V0)} → ${money(V)}</b></td><td><b>${money(c.V0)} → ${money(c.B)}</b></td><td class="${c.B >= V ? "up" : "down"}"><b>${signed(c.B - V)}</b></td></tr>`;
 }
 
-/* ---------- Phân tích danh mục (nút ở Thông tin › Đề xuất): tính trên trình duyệt, không gửi dữ liệu đi đâu ---------- */
+/* ---------- Rà soát danh mục (nút ở Thực thi › Việc cần làm): tính trên trình duyệt, không gửi dữ liệu đi đâu ---------- */
 let analysisAt = null;
 function renderAnalysis(st) {
   const p = planCfg(), cur = currentMix(st), total = Object.values(cur).reduce((a, b) => a + b, 0), tgt = targetMix(total);
@@ -432,7 +432,7 @@ function renderAnalysis(st) {
   ].filter(Boolean);
 
   $("#analysisBox").innerHTML = `
-    <p class="advice small">Danh mục đầu tư <b>${money(total)}</b>, hồ sơ <b>${esc(PROFILES[p.profile].name)}</b>.
+    <p class="advice small">Danh mục đầu tư <b>${money(total)}</b>, khẩu vị rủi ro <b>${esc(PROFILES[p.profile].name)}</b>.
       ${list("down") ? `Cần giảm: <b class="down">${list("down")}</b>. ` : ""}${list("up") ? `Cần tăng: <b class="up">${list("up")}</b>. ` : ""}${list("hold") ? `Giữ: ${list("hold")}.` : ""}</p>
     <div class="tablewrap"><table><tr><th>Lớp tài sản</th><th>Hiện tại</th>${marks.map((m) => `<th>Sau ${m} tháng</th>`).join("")}<th>Mục tiêu</th><th>Hướng</th></tr>
       ${rows.map((r) => `<tr><td><span class="dot" style="background:${css(r.color)}"></span>${r.name}</td><td>${money(cur[r.k])} <span class="muted">${share(cur[r.k])}</span></td>
@@ -452,7 +452,7 @@ function renderCompare(sim, cur, tgt, total, p) {
     return `<tr><td>${label}</td><td>${fmt(a)}</td><td>${fmt(b)}</td><td class="${Math.abs(d) < 1e-9 ? "muted" : good ? "up" : "down"}">${fmt === pctFmt ? (d >= 0 ? "+" : "−") + nf(Math.abs(d * 100), 1) + " điểm" : signed(d)}</td></tr>`;
   };
   const pctFmt = (x) => pct(x);
-  $("#cmpTable").innerHTML = `<tr><th>Sau ${y} năm</th><th>Giữ nguyên</th><th>Theo dự án</th><th>Chênh lệch</th></tr>` +
+  $("#cmpTable").innerHTML = `<tr><th>Sau ${y} năm</th><th>Hiện trạng</th><th>Mục tiêu</th><th>Chênh lệch</th></tr>` +
     row("Giá trị trung vị", fA[1], fB[1], money) +
     row(`Theo sức mua hôm nay (lạm phát ${nf(p.infl, 1)}%)`, fA[1] / Math.pow(1 + p.infl / 100, y), fB[1] / Math.pow(1 + p.infl / 100, y), money) +
     row("Lãi trung vị", fA[1] - total, fB[1] - total, signed) +
@@ -461,20 +461,20 @@ function renderCompare(sim, cur, tgt, total, p) {
     row("Kịch bản tốt (95%)", fA[2], fB[2], money) +
     row("Sụt giảm tối đa (trung vị)", sim.mddA, sim.mddB, pctFmt) +
     row("Thu nhập thụ động năm đầu (/tháng)", incA / 12, incB / 12, money) +
-    `<tr><td>Xác suất dự án cao hơn giữ nguyên</td><td colspan="3" style="text-align:center"><b>${nf(sim.beat * 100, 0)}%</b> số kịch bản</td></tr>`;
-  $("#cmpSum").textContent = `${y} năm: dự án ${signed(fB[1] - fA[1])} · cao hơn ở ${nf(sim.beat * 100, 0)}% kịch bản`;
+    `<tr><td>Xác suất mục tiêu cao hơn hiện trạng</td><td colspan="3" style="text-align:center"><b>${nf(sim.beat * 100, 0)}%</b> số kịch bản</td></tr>`;
+  $("#cmpSum").textContent = `${y} năm: mục tiêu ${signed(fB[1] - fA[1])} · cao hơn ở ${nf(sim.beat * 100, 0)}% kịch bản`;
 
   const labels = Array.from({ length: n + 1 }, (_, m) => (m % 12 === 0 ? `Năm ${m / 12}` : ""));
   const cA = css("--muted"), cB = css("--dep");
   const line = (label, data, color, extra = {}) => ({ label, data, borderColor: color, backgroundColor: color + "26", pointRadius: 0, borderWidth: 2, ...extra });
   const data = {
     labels, datasets: [
-      line("Giữ nguyên – xấu 5%", sim.A.map((x) => x[0]), cA, { borderWidth: 0 }),
-      line("Giữ nguyên – tốt 95%", sim.A.map((x) => x[2]), cA, { borderWidth: 0, fill: "-1" }),
-      line("Giữ nguyên (trung vị)", sim.A.map((x) => x[1]), cA, { borderDash: [5, 4] }),
-      line("Dự án – xấu 5%", sim.B.map((x) => x[0]), cB, { borderWidth: 0 }),
-      line("Dự án – tốt 95%", sim.B.map((x) => x[2]), cB, { borderWidth: 0, fill: "-1" }),
-      line("Theo dự án (trung vị)", sim.B.map((x) => x[1]), cB),
+      line("Hiện trạng – xấu 5%", sim.A.map((x) => x[0]), cA, { borderWidth: 0 }),
+      line("Hiện trạng – tốt 95%", sim.A.map((x) => x[2]), cA, { borderWidth: 0, fill: "-1" }),
+      line("Hiện trạng (trung vị)", sim.A.map((x) => x[1]), cA, { borderDash: [5, 4] }),
+      line("Mục tiêu – xấu 5%", sim.B.map((x) => x[0]), cB, { borderWidth: 0 }),
+      line("Mục tiêu – tốt 95%", sim.B.map((x) => x[2]), cB, { borderWidth: 0, fill: "-1" }),
+      line("Mục tiêu (trung vị)", sim.B.map((x) => x[1]), cB),
     ],
   };
   const ink = css("--muted");
