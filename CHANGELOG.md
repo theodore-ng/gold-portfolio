@@ -2,6 +2,10 @@
 
 Phiên bản theo semver: sửa lỗi và điều chỉnh nhỏ → patch, cập nhật lớn → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
 
+## 1.0.6 – 10/11/2026
+
+- Tổng quan làm lại: 4 ô chỉ số (NAV kèm biểu đồ nhỏ 3M, Tăng trưởng tổng tài sản, Thu nhập thụ động ước tính hiện tại và khi đạt mục tiêu, Tiến độ giảm tỷ trọng vàng có thanh tiến độ và link lịch bán). Thẻ Cơ cấu tài sản so sánh hiện tại với mục tiêu của khẩu vị đang chọn, cột Lệch (điểm %) có thanh xanh/đỏ; trên điện thoại bảng xuống dưới biểu đồ, ẩn thanh lệch.
+
 ## 1.0.5 – 10/11/2026
 
 - Tổng quan: bỏ ô "Vàng nắm giữ" và "Giá SJC mua vào / bán ra" (giá đã lên thanh tiêu đề); dòng Vàng trong Cơ cấu tài sản ghi kèm số lượng. Ô Lãi/lỗ lũy kế thành **Tăng trưởng tổng tài sản** (%/năm, CAGR của NAV từ ngày mua lô vàng ban đầu đến nay, đã loại tiền nạp/rút từ bên ngoài; dưới 1 năm thì hiện mức tăng cộng dồn, không năm hóa). Việc cần làm nhắc nhập ngày mua cho lô vàng ban đầu nếu thiếu.

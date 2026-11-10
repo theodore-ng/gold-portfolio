@@ -330,10 +330,22 @@ function render() {
      <p class="muted small">Dự kiến hoàn tất: <b>${sched.at(-1)?.label || "—"}</b> (${sched.length} tháng). Các tháng sau tính theo nhịp cơ bản ${gs.tranche} lượng/tháng; khi đến kỳ sẽ tăng/giảm theo premium và giá vàng.</p>`;
   $("#glideRule").textContent = `Số lượng giữ lại đi theo phân bổ chiến lược đang chọn. Quy tắc (chỉnh ở mục bên dưới): ${gs.tranche} lượng/tháng; bán thêm ${gs.extra} khi premium > ${gs.premHigh}% hoặc vàng TG ≥ $${gs.xauConfirm}; dừng khi premium < ${gs.premLow}% hoặc vàng TG < $${gs.xauSupport}. Tiền thu về: quỹ khẩn cấp → tiết kiệm bậc thang 3–6–12 tháng.`;
 
+  // Tổng quan: thu nhập thụ động, tiến độ giảm tỷ trọng vàng, NAV 3 tháng
+  const pc = planCfg(), mixNow = currentMix(st), inv = Object.values(mixNow).reduce((a, b) => a + b, 0);
+  const incNow = passiveIncome(mixNow, pc) / 12, incTgt = passiveIncome(targetMix(inv), pc) / 12;
+  $("#kInc").textContent = `${money(incNow)}/tháng`;
+  $("#kIncNote").innerHTML = `Lãi tiết kiệm, quỹ trái phiếu, cổ tức của tài sản đang giữ. Khi đạt mục tiêu ${esc(PROFILES[pc.profile].name)}: <b>${money(incTgt)}/tháng</b>`;
+  $("#kGlide").textContent = plan ? `${nf(g.sold, g.sold % 1 ? 2 : 0)} / ${nf(plan, plan % 1 ? 2 : 0)} lượng` : "Không cần bán";
+  $("#kGlideBar").style.width = (plan ? (g.sold / plan) * 100 : 100) + "%";
+  $("#kGlideNote").innerHTML = (g.remaining > 0
+    ? `Còn bán ${nf(g.remaining, 2)} lượng, giữ ${nf(g.gk.keep, 0)} · tháng này: ${g.qty === 0 ? "tạm dừng" : g.left > 0 ? `bán ${nf(g.left, 2)} lượng` : "đã đủ đợt"}`
+    : `Đã đạt mức giữ ${nf(g.gk.keep, 0)} lượng`) + ` · <a href="#execution" data-focus="glide">Lịch bán ›</a>`;
+  renderSpark();
+
   renderTodo(st, g, L);
   renderAdjust(st);
   renderTx(st);
-  renderAlloc(goldVal, st.cash, st.depVal, sm, total, st.gold);
+  renderAlloc(st);
   renderCharts(st);
   renderPlan(st);
   renderInvest(st);
@@ -561,14 +573,34 @@ function renderTx(st) {
   $("#accSum-tx").textContent = rows.length ? `${rows.length} giao dịch` : "";
 }
 
-function renderAlloc(gold, cash, dep, sm, total, luong) {
-  const items = [["Vàng", gold, css("--gold")], ["Tiền mặt", cash, css("--cash")], ["Tiết kiệm", dep, css("--dep")],
-    ["Trái phiếu", sm.bond, css("--bond")], ["Cổ phiếu lõi (ETF, quỹ CP)", sm.equity, css("--equity")],
-    ["Vệ tinh (cổ phiếu tự chọn)", sm.sat, css("--sat")], ["Tài sản khác", sm.other, css("--muted")]]
-    .filter((x, i) => i < 3 || x[1] > 0);
-  $("#allocTable").innerHTML = `<tr><th>Lớp</th><th>Giá trị</th><th>Tỷ trọng</th></tr>` +
-    items.map(([n, v, c], i) => `<tr><td><span class="dot" style="background:${c}"></span>${n}</td><td>${money(v)}${i === 0 ? ` <span class="muted">(${nf(luong, 2)} lượng)</span>` : ""}</td><td>${nf(total ? (v / total) * 100 : 0, 1)}%</td></tr>`).join("");
-  const data = { labels: items.map((x) => x[0]), datasets: [{ data: items.map((x) => Math.max(x[1], 0)), backgroundColor: items.map((x) => x[2]), borderWidth: 0 }] };
+/** NAV 3 tháng gần nhất (biểu đồ nhỏ trong ô NAV). */
+function renderSpark() {
+  const H = historySince(90), v = H.map((h) => { const x = valueOn(h.d); return x.gold + x.cash + x.dep + x.sec; });
+  if (v.length < 2) return;
+  const c = css("--accent");
+  if (charts.spark) charts.spark.destroy();
+  charts.spark = new Chart($("#chartSpark"), { type: "line", data: { labels: H.map((h) => h.d), datasets: [{ data: v, borderColor: c, backgroundColor: c + "1f", fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.25 }] },
+    options: { maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } } });
+  $("#kSpark").innerHTML = `3M ${chg(v.at(-1) - v[0], `${money(Math.abs(v.at(-1) - v[0]))} (${pct(v.at(-1) / v[0] - 1)})`)}`;
+}
+
+/** Cơ cấu tài sản: hiện tại so với mục tiêu của khẩu vị đang chọn, thanh lệch tỷ trọng (điểm %). */
+function renderAlloc(st) {
+  const cur = currentMix(st), inv = Object.values(cur).reduce((a, b) => a + b, 0), tgt = targetMix(inv), other = secMix().other;
+  const w = (v) => (inv ? (v / inv) * 100 : 0);
+  const rows = CLASSES.map(([k, name, color]) => ({ k, name, color: css(color), v: cur[k], w: w(cur[k]), t: w(tgt[k]) })).filter((r) => r.v >= 0.5 || r.t >= 0.5);
+  const maxD = Math.max(5, ...rows.map((r) => Math.abs(r.t - r.w)));
+  $("#allocProfile").textContent = `Mục tiêu theo khẩu vị ${PROFILES[planCfg().profile].name}`;
+  $("#allocTable").innerHTML = `<tr><th>Lớp</th><th>Giá trị</th><th>Hiện tại</th><th>Mục tiêu</th><th class="drift">Lệch (điểm %)</th></tr>` +
+    rows.map((r) => {
+      const d = r.t - r.w, k = d > 0 ? "up" : "down";
+      return `<tr><td><span class="dot" style="background:${r.color}"></span>${r.name}</td>
+        <td>${money(r.v)}${r.k === "gold" ? `<br><small class="muted">${nf(st.gold, 2)} lượng</small>` : ""}</td><td>${nf(r.w, 1)}%</td><td class="muted">${nf(r.t, 0)}%</td>
+        <td class="drift">${Math.abs(d) < 1 ? '<span class="muted">Khớp</span>' : `<span class="dbar ${k}"><i style="width:${(Math.abs(d) / maxD) * 100}%"></i></span><span class="${k}">${d > 0 ? "+" : "−"}${nf(Math.abs(d), 0)}</span>`}</td></tr>`;
+    }).join("") +
+    (other > 0 ? `<tr><td><span class="dot" style="background:${css("--muted")}"></span>Tài sản khác</td><td>${money(other)}</td><td colspan="3" class="muted">không tham gia phân bổ</td></tr>` : "");
+  const items = rows.map((r) => [r.name, Math.max(r.v, 0), r.color]).concat(other > 0 ? [["Tài sản khác", other, css("--muted")]] : []);
+  const data = { labels: items.map((x) => x[0]), datasets: [{ data: items.map((x) => x[1]), backgroundColor: items.map((x) => x[2]), borderWidth: 0 }] };
   if (charts.alloc) { charts.alloc.data = data; charts.alloc.update(); return; }
   charts.alloc = new Chart($("#chartAlloc"), { type: "doughnut", data, options: { cutout: "68%", plugins: { legend: { display: false } }, maintainAspectRatio: false } });
 }

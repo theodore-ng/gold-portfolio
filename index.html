@@ -7,21 +7,21 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#f2ede2">
 <meta name="color-scheme" content="light">
-<link rel="icon" href="logo.svg?v=1.0.5" type="image/svg+xml">
-<link rel="icon" href="favicon-32.png?v=1.0.5" type="image/png" sizes="32x32">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.0.5">
+<link rel="icon" href="logo.svg?v=1.0.6" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png?v=1.0.6" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.0.6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
-<link rel="stylesheet" href="style.css?v=1.0.5">
+<link rel="stylesheet" href="style.css?v=1.0.6">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=1.0.5"></script>
+<script src="config.js?v=1.0.6"></script>
 </head>
 <body>
 <header>
   <div class="headin">
-    <h1><img class="logo" src="logo.svg?v=1.0.5" alt="">Quản lý tài chính</h1>
+    <h1><img class="logo" src="logo.svg?v=1.0.6" alt="">Quản lý tài chính</h1>
     <div class="row wrap gap">
       <div id="priceStamp"><span class="muted small">Đang tải giá…</span></div>
       <span id="saveState" class="muted small"></span>
@@ -75,15 +75,18 @@
       <!-- Tổng quan -->
       <div class="subpage" data-sub="overview" hidden>
         <section class="kpis">
-          <div class="card kpi hero"><span>Giá trị tài sản ròng (NAV)</span><b id="kTotal"></b><small id="kDay"></small></div>
+          <div class="card kpi hero"><span>Giá trị tài sản ròng (NAV)</span><b id="kTotal"></b><small id="kDay"></small>
+            <div class="spark"><canvas id="chartSpark"></canvas></div><small id="kSpark"></small></div>
           <div class="card kpi"><span id="kPnlHead">Tăng trưởng tổng tài sản</span><b id="kPnl"></b><small id="kPnlNote"></small></div>
+          <div class="card kpi"><span>Thu nhập thụ động (ước tính)</span><b id="kInc"></b><small id="kIncNote"></small></div>
+          <div class="card kpi"><span>Giảm tỷ trọng vàng</span><b id="kGlide"></b><div class="progress"><div id="kGlideBar"></div></div><small id="kGlideNote"></small></div>
         </section>
 
         <section class="card">
-          <h2>Cơ cấu tài sản hiện tại</h2>
+          <div class="row between"><h2>Cơ cấu tài sản</h2><small class="muted" id="allocProfile"></small></div>
           <div class="row wrap">
             <div class="donut"><canvas id="chartAlloc"></canvas></div>
-            <table id="allocTable"></table>
+            <div class="tablewrap allocwrap"><table id="allocTable" class="wrapfirst"></table></div>
           </div>
         </section>
       </div>
@@ -481,10 +484,10 @@
     </div>
   </div>
 </main>
-<script src="plan.js?v=1.0.5"></script>
-<script src="macro.js?v=1.0.5"></script>
-<script src="invest.js?v=1.0.5"></script>
-<script src="app.js?v=1.0.5"></script>
-<script src="tabs.js?v=1.0.5"></script>
+<script src="plan.js?v=1.0.6"></script>
+<script src="macro.js?v=1.0.6"></script>
+<script src="invest.js?v=1.0.6"></script>
+<script src="app.js?v=1.0.6"></script>
+<script src="tabs.js?v=1.0.6"></script>
 </body>
 </html>
