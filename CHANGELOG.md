@@ -2,6 +2,14 @@
 
 Phiên bản theo semver: sửa lỗi và điều chỉnh nhỏ → patch, cập nhật lớn → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
 
+## 1.0.5 – 10/11/2026
+
+- Tổng quan: bỏ ô "Vàng nắm giữ" và "Giá SJC mua vào / bán ra" (giá đã lên thanh tiêu đề); dòng Vàng trong Cơ cấu tài sản ghi kèm số lượng. Ô Lãi/lỗ lũy kế thành **Tăng trưởng tổng tài sản** (%/năm, CAGR của NAV từ ngày mua lô vàng ban đầu đến nay, đã loại tiền nạp/rút từ bên ngoài; dưới 1 năm thì hiện mức tăng cộng dồn, không năm hóa). Việc cần làm nhắc nhập ngày mua cho lô vàng ban đầu nếu thiếu.
+- Favicon: thêm số phiên bản vào đường dẫn (trình duyệt giữ favicon cũ rất lâu), bản PNG 32px dự phòng và apple-touch-icon PNG 180px cho màn hình chính điện thoại.
+- Phân bổ chiến lược: còn 2 khẩu vị. Bỏ Thận trọng và Tăng trưởng (kết quả gần Cân bằng). Thêm **Tăng trưởng mạnh** (λ=1): không quỹ khẩn cấp, cổ phiếu ≤ 80%, vệ tinh ≤ 30% bằng quỹ cổ phiếu tăng trưởng (kỳ vọng = cổ phiếu + 2%, biến động 25%, chỉnh trong Giả định CME). Giải ngân có mục quỹ tăng trưởng (top 3 năm, mỗi công ty một quỹ); Việc cần làm gợi ý mua quỹ theo đợt DCA; loại quỹ có thêm "Tăng trưởng (vệ tinh)". Ai đang chọn Thận trọng/Tăng trưởng được chuyển về Cân bằng.
+- Việc cần làm: gợi ý giải ngân cụ thể cho tiền nhàn rỗi (tiền mặt vượt quỹ khẩn cấp, vd sau khi bán vàng) theo phân bổ chiến lược: mua ETF cổ phiếu lõi đợt DCA tháng này (kèm số CCQ, trừ phần đã mua trong tháng) → quỹ trái phiếu → gửi tiết kiệm bậc thang 3–6–12 tháng (chia ngân hàng theo hạn mức bảo hiểm 125 tr) → phần còn lại giữ kỳ hạn ngắn chờ các đợt sau; cảnh báo khi quỹ khẩn cấp thiếu.
+- Kiểm định quá khứ: bỏ dòng tóm tắt "Từ 1 năm trước…" trên tiêu đề thẻ; cột Chênh lệch đưa lên ngay sau mốc thời gian.
+
 ## 1.0.4 – 09/11/2026
 
 - Thanh tiêu đề: bỏ đơn vị "tr/lượng" cạnh giá vàng (đơn vị hiện trong chú thích khi rê chuột).

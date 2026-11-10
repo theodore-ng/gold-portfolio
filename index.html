@@ -7,20 +7,21 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#f2ede2">
 <meta name="color-scheme" content="light">
-<link rel="icon" href="logo.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="logo.svg">
+<link rel="icon" href="logo.svg?v=1.0.5" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png?v=1.0.5" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.0.5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
-<link rel="stylesheet" href="style.css?v=1.0.4">
+<link rel="stylesheet" href="style.css?v=1.0.5">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=1.0.4"></script>
+<script src="config.js?v=1.0.5"></script>
 </head>
 <body>
 <header>
   <div class="headin">
-    <h1><img class="logo" src="logo.svg" alt="">Quản lý tài chính</h1>
+    <h1><img class="logo" src="logo.svg?v=1.0.5" alt="">Quản lý tài chính</h1>
     <div class="row wrap gap">
       <div id="priceStamp"><span class="muted small">Đang tải giá…</span></div>
       <span id="saveState" class="muted small"></span>
@@ -75,9 +76,7 @@
       <div class="subpage" data-sub="overview" hidden>
         <section class="kpis">
           <div class="card kpi hero"><span>Giá trị tài sản ròng (NAV)</span><b id="kTotal"></b><small id="kDay"></small></div>
-          <div class="card kpi"><span>Lãi/lỗ lũy kế</span><b id="kPnl"></b><small id="kPnlNote"></small></div>
-          <div class="card kpi"><span>Vàng nắm giữ</span><b id="kGold"></b><small id="kGoldVal"></small></div>
-          <div class="card kpi"><span>Giá SJC mua vào / bán ra</span><b id="kSjc"></b><small id="kPrem"></small></div>
+          <div class="card kpi"><span id="kPnlHead">Tăng trưởng tổng tài sản</span><b id="kPnl"></b><small id="kPnlNote"></small></div>
         </section>
 
         <section class="card">
@@ -184,7 +183,7 @@
         </section>
 
         <details class="card acc" id="btCard" data-k="bt" open>
-          <summary><span>Kiểm định quá khứ: nếu đã tái cơ cấu từ trước</span><b id="btSum"></b></summary>
+          <summary><span>Kiểm định quá khứ: nếu đã tái cơ cấu từ trước</span></summary>
           <p class="muted small" style="margin-top:0">Lấy đúng tài sản bạn đang giữ, tính ngược về giá trị ở thời điểm trước đó; nếu khi ấy chia số tiền đó theo phân bổ chiến lược đang chọn thì hôm nay danh mục khác bao nhiêu.</p>
           <div class="tablewrap"><table id="btTable"></table></div>
           <p id="btNote" class="advice"></p>
@@ -482,10 +481,10 @@
     </div>
   </div>
 </main>
-<script src="plan.js?v=1.0.4"></script>
-<script src="macro.js?v=1.0.4"></script>
-<script src="invest.js?v=1.0.4"></script>
-<script src="app.js?v=1.0.4"></script>
-<script src="tabs.js?v=1.0.4"></script>
+<script src="plan.js?v=1.0.5"></script>
+<script src="macro.js?v=1.0.5"></script>
+<script src="invest.js?v=1.0.5"></script>
+<script src="app.js?v=1.0.5"></script>
+<script src="tabs.js?v=1.0.5"></script>
 </body>
 </html>

@@ -6,12 +6,18 @@ const ETF_SPLIT = [ // tỷ lệ gợi ý trong phần cổ phiếu lõi
   ["E1VFVN30", 50], ["FUEVFVND", 30], ["FUEDCMID", 20],
 ];
 const LOT = 100; // HOSE: lô chẵn 100 chứng chỉ quỹ; lô lẻ 1–99 khớp ở bảng giao dịch lô lẻ
+/** Quỹ cổ phiếu tăng trưởng cho phần vệ tinh (khẩu vị Tăng trưởng mạnh): top lợi nhuận bình quân 3 năm, mỗi công ty quản lý một quỹ. */
+function growthFunds(n = 5) {
+  const seen = new Set();
+  return (INV?.equityFunds || []).filter((f) => f.r36ann != null).sort((a, b) => b.r36ann - a.r36ann)
+    .filter((f) => { const m = f.manager || f.code; if (seen.has(m)) return false; seen.add(m); return true; }).slice(0, n);
+}
 
 function renderInvest(st) {
   if (!INV) { $("#investBody").innerHTML = '<p class="muted">Chưa tải được dữ liệu đầu tư.</p>'; return; }
   const p = planCfg(), cur = currentMix(st), total = Object.values(cur).reduce((a, b) => a + b, 0);
   const tgt = targetMix(total), months = Math.max(1, S.settings.dcaMonths || 12);
-  const eqNeed = Math.max(tgt.equity - cur.equity, 0), bondNeed = Math.max(tgt.bond - cur.bond, 0);
+  const eqNeed = Math.max(tgt.equity - cur.equity, 0), bondNeed = Math.max(tgt.bond - cur.bond, 0), satNeed = Math.max(tgt.sat - cur.sat, 0);
   const etf = Object.fromEntries(INV.etfs.map((e) => [e.code, e]));
   const trendTxt = (x) => (x == null ? "—" : `<span class="${cls(x)}">${pct(x)}</span>`);
 
@@ -45,6 +51,13 @@ function renderInvest(st) {
     ? `<p>Cần giải ngân <b>${money(bondNeed)}</b> vào quỹ trái phiếu. Nên chia cho 2–3 quỹ khác công ty quản lý để giảm rủi ro tín dụng:</p>${fundTable(bFunds, bondNeed / 3)}<p class="muted small">Số CCQ tính cho mỗi quỹ 1/3 số tiền.</p>`
     : `<p class="small">Bộ tối ưu hiện <b>không phân bổ</b> quỹ trái phiếu: lợi nhuận kỳ vọng ${nf(c.r.bond, 2)}% (trung vị 12 tháng của các quỹ) so với tiết kiệm ${nf(c.r.liquid, 2)}% bình quân. Quỹ trái phiếu vẫn hợp lý nếu bạn cần <b>rút linh hoạt</b> (nhận tiền sau vài ngày) thay vì khóa kỳ hạn. Ví dụ cho 100 tr:</p>${fundTable(bFunds, 100)}`;
 
+  // 3b. Vệ tinh bằng quỹ cổ phiếu tăng trưởng (khẩu vị Tăng trưởng mạnh)
+  const satPer = satNeed / months, gf = growthFunds();
+  const satHtml = satNeed >= 1
+    ? `<p>Khẩu vị ${esc(PROFILES[p.profile].name)}: giải ngân <b>${money(satNeed)}</b> vào quỹ cổ phiếu tăng trưởng, chia ${months} tháng → <b>${money(satPer)}/tháng</b>, chia đều 3 quỹ của 3 công ty quản lý khác nhau (≈ ${money(satPer / 3)} mỗi quỹ):</p>${fundTable(gf, satPer / 3)}
+      <p class="muted small">Chọn theo lợi nhuận bình quân 3 năm, mỗi công ty một quỹ. Kỳ vọng dùng trong tối ưu = cổ phiếu + ${nf(p.alphaSat, 1)}%/năm, không phải con số 3 năm qua: hiệu suất quá khứ không bảo đảm tương lai và 12 tháng gần nhất phần lớn quỹ âm. Khi ghi mua ở Danh mục › Nắm giữ, đặt "Loại quỹ" = Tăng trưởng (vệ tinh).</p>`
+    : `<p class="small">Khẩu vị ${esc(PROFILES[p.profile].name)} không phân bổ quỹ tăng trưởng. Chọn "Tăng trưởng mạnh" ở <a href="#strategy" data-focus="profileCards">Chiến lược › Phân bổ chiến lược</a> nếu muốn tăng phần vệ tinh.</p>`;
+
   // 4. Cổ phiếu đáng quan tâm (phần vệ tinh)
   const score = (s) => (s.riskNote ? -1 : (s.roe || 0) / (s.pe || 99)); // mã có rủi ro đặc thù xếp cuối
   const rows = [...INV.stocks].sort((a, b) => score(b) - score(a));
@@ -63,9 +76,10 @@ function renderInvest(st) {
       <p class="small">Top theo lợi nhuận bình quân 3 năm. So với ETF: phí quản lý 1,5–2%/năm so với ~0,5–0,8%, cần vượt chỉ số đủ bù phí.</p>${fundTable(eqFunds, perMonth > 0 ? perMonth : 0)}
       ${perMonth > 0 ? `<p class="muted small">Số CCQ tính cho ${money(perMonth)} (một tháng DCA).</p>` : ""}</details>
     <h3 class="sub">2. Quỹ trái phiếu</h3>${bondHtml}
-    <h3 class="sub">3. Cổ phiếu đáng quan tâm (phần vệ tinh)</h3>
+    <h3 class="sub">3. Vệ tinh: quỹ cổ phiếu tăng trưởng</h3>${satHtml}
+    <h3 class="sub">4. Cổ phiếu đáng quan tâm (vệ tinh tự giao dịch)</h3>
     <p class="small">Sắp xếp theo ROE ÷ P/E (chất lượng so với giá); mã có rủi ro đặc thù (⚠) xếp cuối. Xanh: ROE ≥ 15%, P/E ≤ 10, lợi nhuận tăng ≥ 15%. Chỉ số tài chính 4 quý gần nhất đến ${fmtDate(fiscal)}.</p>
     <div class="tablewrap"><table class="stocks wrapfirst"><tr><th>Mã</th><th>Giá (nghìn)</th><th>P/E</th><th>P/B</th><th>ROE</th><th>LN tăng (4Q)</th><th>Cổ tức</th><th>So MA200</th><th>3 tháng</th></tr>${stockRows.join("")}</table></div>
-    <p class="muted small">Đây là danh sách theo dõi, không phải khuyến nghị mua. Theo CFA (alpha = 0), bộ tối ưu chưa phân bổ cho vệ tinh. Chỉ dùng sau khi paper trading 2–3 tháng, mỗi lệnh rủi ro ≤ 1–2% vốn vệ tinh.${INV.stocks.some((x) => x.dataNote) ? " * Dữ liệu giá có bước nhảy (có thể do chia tách), chưa tính xu hướng." : ""}</p>
+    <p class="muted small">Đây là danh sách theo dõi, không phải khuyến nghị mua. Theo CFA (alpha = 0), bộ tối ưu không phân bổ cho tự giao dịch. Chỉ dùng sau khi paper trading 2–3 tháng, mỗi lệnh rủi ro ≤ 1–2% vốn vệ tinh.${INV.stocks.some((x) => x.dataNote) ? " * Dữ liệu giá có bước nhảy (có thể do chia tách), chưa tính xu hướng." : ""}</p>
     <p class="muted small">Dữ liệu: VNDirect (giá, chỉ số), fmarket (quỹ mở), cập nhật ${new Date(INV.updated).toLocaleString("vi-VN")}.</p>`;
 }

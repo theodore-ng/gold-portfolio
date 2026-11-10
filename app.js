@@ -222,6 +222,45 @@ function glide(st) {
   return { sold, remaining, qty, why, soldThisMonth, left: Math.max(qty - soldThisMonth, 0), gk };
 }
 
+/** Tăng trưởng tổng tài sản bình quân năm (CAGR của NAV), loại tiền nạp/rút từ bên ngoài.
+    Bắt đầu = ngày mua sớm nhất của các lô vàng ban đầu; tài sản lúc đó = vàng theo giá vốn + tiền mặt ban đầu
+    + chứng khoán/sổ tiết kiệm có trước ngày đó (theo giá vốn). Sau đó: nạp/rút tiền mặt, lô vàng thêm không trừ tiền mặt,
+    sổ tiết kiệm có từ trước, chứng khoán khai báo thêm (không trừ tiền mặt) là dòng tiền ngoài. Không có nạp/rút thì
+    đúng bằng (NAV hôm nay ÷ NAV đầu)^(1/năm) − 1; có nạp/rút thì là lãi suất làm cân bằng các dòng đó (XIRR trên NAV).
+    Dưới 1 năm thì không năm hóa (chuẩn GIPS). */
+function navGrowth(L, d, total) {
+  const dated = S.lots.filter((l) => l.date).map((l) => l.date).sort();
+  if (!dated.length) return null;
+  const t0 = dated[0];
+  let nav0 = S.cash0 || 0, skipGold = 0, skipVal = 0;
+  const ext = [], add = (date, v) => { if (v) { if (date <= t0) nav0 += v; else ext.push([date, v]); } };
+  for (const l of S.lots) {
+    if (l.cost == null) { skipGold += l.luong; continue; }
+    add(l.date || t0, l.luong * l.cost);
+  }
+  for (const t of txSorted()) {
+    if (t.date > d) continue;
+    if (t.type === "cash") add(t.date, t.amount);
+    else if (t.type === "buy" && !t.fromCash && t.cost != null) add(t.date, t.luong * t.cost);
+    else if (t.type === "dep_open" && t.ext) add(t.date, t.amount);
+  }
+  for (const h of S.sec || []) {
+    if (h.cost == null) { skipVal += secValue(h); continue; }
+    add(h.date || t0, (secQty(h) * h.cost) / SEC_TYPES[h.type].unit);
+  }
+  // Lô vàng chưa có giá vốn: không biết giá trị lúc đầu nên bỏ cả phần giá trị hôm nay
+  const lotsNow = derive(d).lots;
+  for (const l of lotsNow) if (l.cost == null) skipVal += l.rem * goldPx(l, L);
+  const navNow = total - skipVal;
+  if (nav0 <= 0) return null;
+  const years = daysBetween(t0, d) / 365, contrib = ext.reduce((s, f) => s + f[1], 0);
+  const flows = [[t0, -nav0], ...ext.map(([dt, v]) => [dt, -v]), [d, navNow]];
+  const npv = (r) => flows.reduce((s, [dt, v]) => s + v / Math.pow(1 + r, daysBetween(t0, dt) / 365), 0);
+  let lo = -0.99, hi = 10, rate = null;
+  if (npv(lo) * npv(hi) < 0) { for (let i = 0; i < 100; i++) { const m = (lo + hi) / 2; if (npv(lo) * npv(m) <= 0) hi = m; else lo = m; } rate = (lo + hi) / 2; }
+  return { rate, years, t0, nav0, navNow, contrib, cum: navNow / (nav0 + contrib) - 1, skipGold };
+}
+
 /* ---------- hiển thị ---------- */
 function render() {
   const st = derive();
@@ -233,8 +272,6 @@ function render() {
   const prev = valueOn(prevDate), prevTotal = prev.gold + prev.cash + prev.dep + prev.sec;
   const unreal = st.lots.reduce((s, l) => s + (l.cost == null ? 0 : l.rem * (goldPx(l, L) - l.cost)), 0);
   const secUnreal = (S.sec || []).reduce((s, h) => s + (secGain(h) ?? 0), 0);
-  const basis = st.lots.reduce((s, l) => s + (l.cost == null ? 0 : l.luong * l.cost), 0);
-  const unknownHeld = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
   const pnl = unreal + st.realized + st.interest + secUnreal;
 
   // Thanh tiêu đề: giá vàng SJC mua/bán hôm nay, tăng/giảm so với phiên trước
@@ -246,15 +283,22 @@ function render() {
   $("#kTotal").textContent = money(total);
   $("#kDay").innerHTML = dayTxt;
   $("#fundDay").innerHTML = `Giá trị hôm nay <b>${money(total)}</b> ${dayTxt}`;
-  $("#kPnl").innerHTML = `<span class="${cls(pnl)}">${signed(pnl)}</span>`;
-  $("#kPnlNote").innerHTML = (basis ? `${pct(pnl / basis)} trên giá vốn vàng · ` : "") +
-    `vàng chưa chốt ${signed(unreal)} · đã chốt ${signed(st.realized)} · lãi TK ${signed(st.interest)}` +
-    (S.sec?.length ? ` · chứng khoán & khác ${signed(secUnreal)}` : "") +
-    (unknownHeld + st.unknownSold > 0 ? `<br><span class="warn">Chưa tính ${nf(unknownHeld + st.unknownSold, 2)} lượng chưa có giá vốn</span>` : "");
-  $("#kGold").textContent = `${nf(st.gold, 2)} lượng`;
-  $("#kGoldVal").textContent = `${money(goldVal)} theo giá mua vào`;
-  $("#kSjc").textContent = `${nf(L.sjc_buy, 1)} / ${nf(L.sjc_sell, 1)}`;
-  $("#kPrem").textContent = `Premium ${pct(L.premium ?? 0)} · TG $${nf(L.xau ?? 0, 0)} ≈ ${nf(L.world ?? 0, 1)} tr`;
+  const ng = navGrowth(L, d, total);
+  const base = ng ? `${money(ng.nav0)} ngày ${fmtDate(ng.t0)} → ${money(ng.navNow)} hôm nay${Math.abs(ng.contrib) >= 1 ? ` · đã loại nạp/rút ròng ${signed(ng.contrib)}` : ""}` : "";
+  const skip = ng?.skipGold ? `<br><span class="warn">Chưa tính ${nf(ng.skipGold, 2)} lượng vàng chưa có giá vốn</span>` : "";
+  if (!ng) {
+    $("#kPnlHead").textContent = "Tăng trưởng tổng tài sản";
+    $("#kPnl").innerHTML = '<span class="muted">—</span>';
+    $("#kPnlNote").innerHTML = `Cần ngày mua của lô vàng ban đầu để tính. Lãi/lỗ lũy kế ${signed(pnl)}.`;
+  } else if (ng.years >= 1 && ng.rate != null) {
+    $("#kPnlHead").textContent = "Tăng trưởng tổng tài sản";
+    $("#kPnl").innerHTML = `<span class="${cls(ng.rate)}">${pct(ng.rate)}/năm</span>`;
+    $("#kPnlNote").innerHTML = `${base} (${nf(ng.years, 1)} năm)` + skip;
+  } else {
+    $("#kPnlHead").textContent = "Tăng trưởng tổng tài sản";
+    $("#kPnl").innerHTML = `<span class="${cls(ng.cum)}">${pct(ng.cum)}</span>`;
+    $("#kPnlNote").innerHTML = `${base}; chưa đủ 1 năm nên chưa quy ra %/năm` + skip;
+  }
   if (st.errors.length) alert(st.errors.join("\n"));
 
   // lộ trình
@@ -289,7 +333,7 @@ function render() {
   renderTodo(st, g, L);
   renderAdjust(st);
   renderTx(st);
-  renderAlloc(goldVal, st.cash, st.depVal, sm, total);
+  renderAlloc(goldVal, st.cash, st.depVal, sm, total, st.gold);
   renderCharts(st);
   renderPlan(st);
   renderInvest(st);
@@ -297,12 +341,62 @@ function render() {
   sellPreview();
 }
 
-/** Việc cần làm hôm nay: rút ra từ lộ trình bán vàng, tiết kiệm đáo hạn, dữ liệu còn thiếu. */
+/** Giải ngân tiền nhàn rỗi (tiền mặt vượt quỹ khẩn cấp, vd tiền bán vàng) theo phân bổ chiến lược đang chọn:
+    cổ phiếu lõi theo đợt DCA tháng này (trừ phần đã mua trong tháng) → quỹ trái phiếu → tiền gửi có kỳ hạn
+    → phần còn lại để kỳ hạn ngắn chờ các đợt cổ phiếu sau. Tính lại mỗi lần ghi giao dịch nên tự giảm khi đã làm. */
+function deployTodo(st, d) {
+  const out = [], cur = currentMix(st), total = Object.values(cur).reduce((a, b) => a + b, 0);
+  if (!total) return out;
+  const tgt = targetMix(total), months = Math.max(1, S.settings.dcaMonths || 12);
+  let free = cur.cash - tgt.cash;
+  if (cur.cash < tgt.cash - 1) out.push({ ic: "!", t: `Quỹ khẩn cấp còn thiếu ${money(tgt.cash - cur.cash)}`, s: `Mục tiêu ${money(tgt.cash)} tiền mặt; ưu tiên bù trước khi giải ngân` });
+  if (free < 1) return out;
+  const ym = d.slice(0, 7), name = PROFILES[planCfg().profile]?.name || "";
+  // Cổ phiếu lõi: đợt DCA của tháng = (khoản thiếu đầu tháng) / số tháng, trừ phần đã mua trong tháng
+  const boughtEq = (S.sec || []).filter((h) => (h.date || "").startsWith(ym) && secClass(h) === "equity").reduce((s, h) => s + secValue(h), 0);
+  const gapEq = Math.max(tgt.equity - cur.equity, 0);
+  const eqNow = Math.min(Math.max((gapEq + boughtEq) / months - boughtEq, 0), gapEq, free);
+  if (eqNow >= 1) {
+    const etf = Object.fromEntries((INV?.etfs || []).map((e) => [e.code, e]));
+    const split = ETF_SPLIT.filter(([c]) => etf[c]).map(([c, w]) => `${c} ${w}% (~${nf(Math.floor((eqNow * w / 100 * 1e6) / etf[c].price), 0)} CCQ)`).join(" · ");
+    out.push({ act: 1, ic: "↑", t: `Mua ETF cổ phiếu lõi ≈ ${money(eqNow)} (đợt DCA tháng ${ym.slice(5)}/${ym.slice(0, 4)})`,
+      s: `${split || "ETF chỉ số VN30/VN Diamond"}. Còn thiếu ${money(gapEq - eqNow)} so với mục tiêu ${name}, chia ${months} tháng`, go: ["execution", "investBody", "Chi tiết"] });
+    free -= eqNow;
+  } else if (boughtEq >= 1) out.push({ done: 1, ic: "✓", t: `Đã mua cổ phiếu lõi tháng này (${money(boughtEq)})`, s: "Đợt DCA tiếp theo: tháng sau" });
+  // Vệ tinh (khẩu vị Tăng trưởng mạnh): quỹ cổ phiếu tăng trưởng, cùng nhịp DCA
+  const boughtSat = (S.sec || []).filter((h) => (h.date || "").startsWith(ym) && secClass(h) === "sat").reduce((s, h) => s + secValue(h), 0);
+  const gapSat = Math.max(tgt.sat - cur.sat, 0);
+  const satNow = Math.min(Math.max((gapSat + boughtSat) / months - boughtSat, 0), gapSat, free);
+  if (satNow >= 1) {
+    const gf = typeof growthFunds === "function" ? growthFunds(3).map((f) => f.code) : [];
+    out.push({ act: 1, ic: "↑", t: `Mua quỹ cổ phiếu tăng trưởng ≈ ${money(satNow)} (vệ tinh, đợt DCA tháng ${ym.slice(5)}/${ym.slice(0, 4)})`,
+      s: `${gf.length ? `Chia đều ${gf.join(", ")} (≈ ${money(satNow / gf.length)} mỗi quỹ). ` : ""}Khi ghi mua, chọn Loại quỹ = Tăng trưởng (vệ tinh). Còn thiếu ${money(gapSat - satNow)}`, go: ["execution", "investBody", "Chi tiết"] });
+    free -= satNow;
+  }
+  const bondNow = Math.min(Math.max(tgt.bond - cur.bond, 0), free);
+  if (bondNow >= 1) {
+    out.push({ act: 1, ic: "↑", t: `Mua quỹ trái phiếu ≈ ${money(bondNow)}`, s: "Chia 2–3 quỹ của các công ty quản lý khác nhau; danh sách và số CCQ ở Giải ngân", go: ["execution", "investBody", "Chi tiết"] });
+    free -= bondNow;
+  }
+  const depNow = Math.min(Math.max(tgt.dep - cur.dep, 0), free);
+  if (depNow >= 1) {
+    const rate = vn("deposit")?.value, banks = Math.ceil(depNow / 125);
+    const ladder = depNow >= 30 ? `bậc thang 3–6–12 tháng, mỗi kỳ ≈ ${money(depNow / 3)}` : "kỳ hạn 6 tháng";
+    out.push({ act: 1, ic: "₫", t: `Gửi tiết kiệm có kỳ hạn ≈ ${money(depNow)}`,
+      s: `${ladder}${banks > 1 ? `, chia ít nhất ${banks} ngân hàng (bảo hiểm tối đa 125 tr/người/ngân hàng)` : ""}${rate ? `; lãi bình quân hiện ~${nf(rate, 1)}%/năm` : ""}`, go: ["portfolio", "depForm", "Ghi gửi"] });
+    free -= depNow;
+  }
+  if (free >= 1) out.push({ ic: "⏳", t: `Giữ ${money(free)} chờ các đợt mua cổ phiếu tháng sau`,
+    s: gapEq - eqNow + gapSat - satNow >= 1 ? "Gửi kỳ hạn 1 tháng hoặc quỹ trái phiếu/quỹ tiền tệ để vẫn có lãi, rút ra theo nhịp DCA" : "Đã đủ tỷ trọng các lớp; có thể gửi kỳ hạn ngắn hoặc xem lại phân bổ chiến lược", go: ["strategy", "planTable", "Xem"] });
+  return out;
+}
+
+/** Việc cần làm hôm nay: rút ra từ lộ trình bán vàng, tiết kiệm đáo hạn, giải ngân tiền nhàn rỗi, dữ liệu còn thiếu. */
 function renderTodo(st, g, L) {
   const items = [], d = today();
   if (g.remaining > 0) {
     if (g.qty === 0) items.push({ ic: "⏸", t: "Tạm dừng bán vàng tháng này", s: g.why });
-    else if (g.left > 0) items.push({ act: 1, ic: "↓", t: `Bán ${nf(g.left, 2)} lượng vàng (đợt tháng này, ≈ ${money(g.left * L.sjc_buy)})`, s: g.why, go: ["portfolio", "sellForm", "Ghi bán"] });
+    else if (g.left > 0) items.push({ act: 1, ic: "↓", t: `Bán ${nf(g.left, 2)} lượng vàng (đợt tháng này, ≈ ${money(g.left * L.sjc_buy)})`, s: `${g.why}. Tiền bán được: giải ngân theo các việc bên dưới`, go: ["portfolio", "sellForm", "Ghi bán"] });
     else items.push({ done: 1, ic: "✓", t: `Đã đủ đợt bán vàng tháng này (${nf(g.soldThisMonth, 2)} lượng)`, s: "Đợt tiếp theo: tháng sau" });
   }
   for (const x of st.deps) {
@@ -311,9 +405,10 @@ function renderTodo(st, g, L) {
   }
   const unk = st.lots.reduce((s, l) => s + (l.cost == null ? l.rem : 0), 0);
   if (unk > 0) items.push({ act: 1, ic: "?", t: `Nhập giá vốn cho ${nf(unk, 2)} lượng vàng`, s: "Để tính đúng lãi/lỗ", go: ["portfolio", "adjLots", "Nhập"] });
+  if (S.lots.length && !S.lots.some((l) => l.date)) items.push({ act: 1, ic: "?", t: "Nhập ngày mua cho lô vàng ban đầu", s: "Để tính tăng trưởng tổng tài sản từ lúc mua vàng (Danh mục › Tổng quan); ngày gần đúng cũng được", go: ["portfolio", "adjLots", "Nhập"] });
   const noPx = (S.sec || []).filter((h) => { const s = secPx(h).src; return !s || (s === "giá vốn" && h.type !== "bond"); });
   if (noPx.length) items.push({ act: 1, ic: "?", t: `Nhập giá hiện tại cho ${noPx.map((h) => h.code).join(", ")}`, s: "Không có trong dữ liệu giá tự động, đang tạm tính theo giá vốn", go: ["portfolio", "secAdjust", "Nhập"] });
-  if (st.cash >= 1) items.push({ act: 1, ic: "→", t: `Tiền mặt ${money(st.cash)}: giữ phần quỹ khẩn cấp, phân bổ phần còn lại`, s: "Gửi tiết kiệm hoặc giải ngân theo bảng đề xuất", go: ["strategy", "planTable", "Xem"] });
+  items.push(...deployTodo(st, d));
   $("#todoHead").textContent = `Việc cần làm · ${fmtDate(d)}`;
   $("#todoList").innerHTML = items.length
     ? items.map((i) => `<li class="${i.act ? "act" : i.done ? "done" : ""}"><span class="ic">${i.ic}</span><div class="tx">${esc(i.t)}<small>${esc(i.s || "")}</small></div>${i.go ? `<a href="#${i.go[0]}" data-focus="${i.go[1]}">${i.go[2]} ›</a>` : ""}</li>`).join("")
@@ -326,7 +421,7 @@ function renderTodo(st, g, L) {
 const SEC_GROUPS = {
   eq: { title: "Cổ phiếu & ETF", types: ["stock", "etf"], cols: [["type", "Loại", "sel:stock=Cổ phiếu,etf=ETF"], ["code", "Mã", "code"], ["qty", "Số lượng", "num"], ["cost", "Giá vốn TB (đ)", "num"], ["date", "Ngày mua", "date"], ["broker", "Công ty CK", "text"], ["price", "Giá hiện tại (đ)", "num"]],
     note: "Giá hiện tại để trống = tự động lấy giá (VNDirect, cập nhật 4 lần/ngày) nếu mã có trong dữ liệu; mã khác cần nhập tay. Cổ phiếu tự chọn tính là Vệ tinh, ETF là Cổ phiếu lõi." },
-  fund: { title: "Chứng chỉ quỹ mở", types: ["fund"], cols: [["code", "Mã quỹ", "code"], ["fclass", "Loại quỹ", "sel:=Tự động,equity=Cổ phiếu,bond=Trái phiếu"], ["qty", "Số CCQ", "num"], ["cost", "NAV lúc mua (đ)", "num"], ["date", "Ngày mua", "date"], ["broker", "Nền tảng", "text"], ["price", "NAV hiện tại (đ)", "num"]],
+  fund: { title: "Chứng chỉ quỹ mở", types: ["fund"], cols: [["code", "Mã quỹ", "code"], ["fclass", "Loại quỹ", "sel:=Tự động,equity=Cổ phiếu,bond=Trái phiếu,sat=Tăng trưởng (vệ tinh)"], ["qty", "Số CCQ", "num"], ["cost", "NAV lúc mua (đ)", "num"], ["date", "Ngày mua", "date"], ["broker", "Nền tảng", "text"], ["price", "NAV hiện tại (đ)", "num"]],
     note: "NAV hiện tại để trống = tự động lấy từ fmarket nếu quỹ có trong dữ liệu. Loại quỹ tự động: quỹ trái phiếu → Trái phiếu, còn lại → Cổ phiếu lõi." },
   bond: { title: "Trái phiếu", types: ["bond"], cols: [["code", "Mã / tên", "text"], ["qty", "Số lượng", "num"], ["cost", "Giá mua (đ)", "num"], ["coupon", "Coupon (%/năm)", "num"], ["date", "Ngày mua", "date"], ["maturity", "Đáo hạn", "date"], ["price", "Giá hiện tại (đ)", "num"]],
     note: "Giá hiện tại để trống = tính theo giá mua." },
@@ -466,13 +561,13 @@ function renderTx(st) {
   $("#accSum-tx").textContent = rows.length ? `${rows.length} giao dịch` : "";
 }
 
-function renderAlloc(gold, cash, dep, sm, total) {
+function renderAlloc(gold, cash, dep, sm, total, luong) {
   const items = [["Vàng", gold, css("--gold")], ["Tiền mặt", cash, css("--cash")], ["Tiết kiệm", dep, css("--dep")],
     ["Trái phiếu", sm.bond, css("--bond")], ["Cổ phiếu lõi (ETF, quỹ CP)", sm.equity, css("--equity")],
     ["Vệ tinh (cổ phiếu tự chọn)", sm.sat, css("--sat")], ["Tài sản khác", sm.other, css("--muted")]]
     .filter((x, i) => i < 3 || x[1] > 0);
   $("#allocTable").innerHTML = `<tr><th>Lớp</th><th>Giá trị</th><th>Tỷ trọng</th></tr>` +
-    items.map(([n, v, c]) => `<tr><td><span class="dot" style="background:${c}"></span>${n}</td><td>${money(v)}</td><td>${nf(total ? (v / total) * 100 : 0, 1)}%</td></tr>`).join("");
+    items.map(([n, v, c], i) => `<tr><td><span class="dot" style="background:${c}"></span>${n}</td><td>${money(v)}${i === 0 ? ` <span class="muted">(${nf(luong, 2)} lượng)</span>` : ""}</td><td>${nf(total ? (v / total) * 100 : 0, 1)}%</td></tr>`).join("");
   const data = { labels: items.map((x) => x[0]), datasets: [{ data: items.map((x) => Math.max(x[1], 0)), backgroundColor: items.map((x) => x[2]), borderWidth: 0 }] };
   if (charts.alloc) { charts.alloc.data = data; charts.alloc.update(); return; }
   charts.alloc = new Chart($("#chartAlloc"), { type: "doughnut", data, options: { cutout: "68%", plugins: { legend: { display: false } }, maintainAspectRatio: false } });

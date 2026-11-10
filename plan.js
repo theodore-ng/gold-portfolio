@@ -3,11 +3,12 @@
    tối ưu trung bình–phương sai (tối đa U = E(R) − ½·λ·σ²) dưới các ràng buộc IPS; mô phỏng Monte Carlo.
    Dùng chung tiện ích trong app.js và dữ liệu vĩ mô trong macro.js. Đơn vị tiền: triệu VND. */
 
-// Ba hồ sơ = cùng một bài toán tối ưu, khác mức ngại rủi ro λ (CFA: λ cao = ngại rủi ro hơn)
+// Hai khẩu vị = cùng một bài toán tối ưu, khác mức ngại rủi ro λ (CFA: λ cao = ngại rủi ro hơn) và ràng buộc IPS.
+// `over` ghi đè giả định chung cho riêng khẩu vị đó. (Thận trọng λ=8 và Tăng trưởng λ=2 cũ cho kết quả gần Cân bằng nên đã bỏ.)
 const PROFILES = {
-  conservative: { name: "Thận trọng", lambda: 8 },
   balanced: { name: "Cân bằng", lambda: 4 },
-  growth: { name: "Tăng trưởng", lambda: 2 },
+  // Không giữ quỹ khẩn cấp, cổ phiếu tới 80%, vệ tinh tới 30% bằng quỹ mở cổ phiếu tăng trưởng (kỳ vọng = cổ phiếu + alphaSat)
+  aggressive: { name: "Tăng trưởng mạnh", lambda: 1, over: { emergency: 0, eqMax: 80, satMax: 30, satGrowth: true } },
 };
 const CLASSES = [
   ["gold", "Vàng SJC", "--gold", "Phòng ngừa rủi ro đuôi (mất giá VND, rủi ro hệ thống). Bán dần theo lộ trình; bán nhiều hơn khi premium SJC cao."],
@@ -15,7 +16,7 @@ const CLASSES = [
   ["dep", "Tiết kiệm có kỳ hạn", "--dep", "Bậc thang 3–6–12 tháng, chia nhiều ngân hàng (≤ 125 tr/ngân hàng để được bảo hiểm)."],
   ["bond", "Quỹ trái phiếu", "--bond", "Quỹ mở trái phiếu (DCBF, VFF, TCBF, SSIBF…): rút linh hoạt hơn tiết kiệm. So sánh phí và lợi suất 3 năm."],
   ["equity", "Cổ phiếu lõi", "--equity", "Mua đều hằng tháng (DCA) ETF E1VFVN30, FUEVFVND, FUESSVFL hoặc quỹ mở cổ phiếu (DCDS, VESAF, VEOF…)."],
-  ["sat", "Vệ tinh (tự giao dịch)", "--sat", "CFA giả định alpha = 0 nên tối ưu không phân bổ; chỉ thêm khi paper trading chứng minh có lợi thế."],
+  ["sat", "Vệ tinh", "--sat", "Tăng trưởng mạnh: quỹ mở cổ phiếu tăng trưởng (top hiệu suất 3 năm, phí thấp), DCA hằng tháng, chia 2–3 quỹ. Cân bằng: tự giao dịch cổ phiếu, CFA giả định alpha = 0 nên không phân bổ; chỉ thêm khi paper trading chứng minh có lợi thế."],
 ];
 const OPT_KEYS = ["liquid", "bond", "equity", "gold", "sat"];
 const LABEL = { liquid: "Tiền mặt + tiết kiệm", bond: "Quỹ trái phiếu", equity: "Cổ phiếu lõi", gold: "Vàng SJC", sat: "Vệ tinh" };
@@ -24,14 +25,15 @@ const DEFAULT_PLAN = {
   // Cổ phiếu VN – Grinold–Kroner: cổ tức + tăng trưởng thực + lạm phát − pha loãng (+ định giá lại = 0)
   divEq: 2, gReal: 6.5, dilution: 1, vEq: 20,
   rGold: 6, vGold: 17, premTarget: 3,
-  rDep: 6.5, rCash: 0.5, rBond: 6.5, vBond: 3, vSat: 30,
+  rDep: 6.5, rCash: 0.5, rBond: 6.5, vBond: 3, vSat: 30, alphaSat: 2, vGrowth: 25,
   goldMin: 10, goldMax: 30, eqMax: 60, satMax: 10,
 };
 const ASSUME_FIELDS = [
   ["infl", "Lạm phát dài hạn (%)"], ["emergency", "Quỹ khẩn cấp (tr)"],
   ["divEq", "CP: tỷ suất cổ tức (%)"], ["gReal", "CP: tăng trưởng thực (%)"], ["dilution", "CP: pha loãng (%)"], ["vEq", "CP: biến động (%)"],
   ["rGold", "Vàng TG: tăng/năm (%)"], ["vGold", "Vàng: biến động (%)"], ["premTarget", "Premium SJC sau 2 năm (%)"],
-  ["rDep", "Lãi tiết kiệm dài hạn (%)"], ["rCash", "Lãi tiền mặt (%)"], ["rBond", "Quỹ trái phiếu (%)"], ["vBond", "Quỹ TP: biến động (%)"], ["vSat", "Vệ tinh: biến động (%)"],
+  ["rDep", "Lãi tiết kiệm dài hạn (%)"], ["rCash", "Lãi tiền mặt (%)"], ["rBond", "Quỹ trái phiếu (%)"], ["vBond", "Quỹ TP: biến động (%)"], ["vSat", "Vệ tinh tự giao dịch: biến động (%)"],
+  ["alphaSat", "Quỹ tăng trưởng: vượt cổ phiếu (%)"], ["vGrowth", "Quỹ tăng trưởng: biến động (%)"],
   ["goldMin", "Ràng buộc: vàng tối thiểu (%)"], ["goldMax", "Ràng buộc: vàng tối đa (%)"], ["eqMax", "Ràng buộc: cổ phiếu tối đa (%)"], ["satMax", "Ràng buộc: vệ tinh tối đa (%)"],
 ];
 
@@ -41,10 +43,12 @@ const planCfg = () => {
   if (old.v !== PLAN_VERSION) // chuyển sang phương pháp mới: giả định về mặc định, giữ lựa chọn cá nhân
     S.settings.plan = { ...DEFAULT_PLAN, v: PLAN_VERSION, ...(old.horizon ? { horizon: old.horizon } : {}), ...(old.emergency != null ? { emergency: old.emergency } : {}) };
   const p = (S.settings.plan = { ...DEFAULT_PLAN, ...S.settings.plan });
-  if (!PROFILES[p.profile]) p.profile = p.risk; // dữ liệu cũ: "stage1"/"rec"
-  if (!PROFILES[p.risk]) p.risk = "balanced";
+  if (!PROFILES[p.risk]) p.risk = "balanced"; // dữ liệu cũ: "conservative"/"growth" đã bỏ
+  if (!PROFILES[p.profile]) p.profile = p.risk; // dữ liệu cũ: "stage1"/"rec"/"conservative"/"growth"
   return p;
 };
+/** Giả định của một khẩu vị: giả định chung + phần ghi đè riêng (quỹ khẩn cấp, trần cổ phiếu/vệ tinh, vệ tinh = quỹ tăng trưởng). */
+const profCfg = (k) => { const p = planCfg(); return { ...p, ...(PROFILES[k || p.profile]?.over || {}) }; };
 const depNow = (p) => vn("deposit")?.value ?? p.rDep;
 
 /* ---------- Kỳ vọng thị trường (Capital Market Expectations) ---------- */
@@ -75,9 +79,12 @@ function cme(p, years) {
   notes.push(["bond", INV?.bondMedian12m != null
     ? `Trung vị lợi nhuận 12 tháng của ${INV.bondFunds.length} quỹ trái phiếu: ${nf(bondR, 2)}% (CFA: kỳ vọng trái phiếu ≈ lợi suất hiện tại)`
     : `Giả định ${nf(p.rBond, 1)}% (CFA: kỳ vọng trái phiếu ≈ lợi suất hiện tại)`]);
-  notes.push(["sat", `Như cổ phiếu (${nf(eq, 1)}%) vì CFA giả định alpha = 0, nhưng biến động cao hơn (${nf(p.vSat, 0)}%)`]);
-  const r = { liquid, bond: bondR, equity: eq, gold, sat: eq };
-  const v = { liquid: 0.5, bond: p.vBond, equity: p.vEq, gold: p.vGold, sat: p.vSat };
+  const sat = p.satGrowth ? eq + p.alphaSat : eq;
+  notes.push(["sat", p.satGrowth
+    ? `Quỹ cổ phiếu tăng trưởng: cổ phiếu ${nf(eq, 1)}% + vượt trội ${nf(p.alphaSat, 1)}% sau phí (quỹ chủ động tốt, không bền theo thời gian) = ${nf(sat, 1)}%, biến động ${nf(p.vGrowth, 0)}%`
+    : `Tự giao dịch: như cổ phiếu (${nf(eq, 1)}%) vì CFA giả định alpha = 0, nhưng biến động cao hơn (${nf(p.vSat, 0)}%)`]);
+  const r = { liquid, bond: bondR, equity: eq, gold, sat };
+  const v = { liquid: 0.5, bond: p.vBond, equity: p.vEq, gold: p.vGold, sat: p.satGrowth ? p.vGrowth : p.vSat };
   return { r, v, notes: Object.fromEntries(notes) };
 }
 
@@ -129,7 +136,7 @@ function bounds(total, p) {
 
 const optCache = new Map();
 function optimal(profileKey, total) {
-  const p = planCfg(), c = cme(p, p.horizon);
+  const p = profCfg(profileKey), c = cme(p, p.horizon);
   const key = JSON.stringify([profileKey, Math.round(total), c.r, c.v, p.goldMin, p.goldMax, p.eqMax, p.satMax, p.emergency]);
   if (!optCache.has(key)) { if (optCache.size > 50) optCache.clear(); optCache.set(key, { ...optimize(c, PROFILES[profileKey].lambda, bounds(total, p)), cme: c }); }
   return optCache.get(key);
@@ -141,7 +148,7 @@ function currentMix(st) {
 }
 
 function targetMix(total, profileKey) {
-  const p = planCfg(), w = optimal(profileKey || p.profile, total).w;
+  const k = profileKey || planCfg().profile, p = profCfg(k), w = optimal(k, total).w;
   const liquid = (total * w.liquid) / 100, cash = Math.min(p.emergency, liquid);
   return { gold: (total * w.gold) / 100, cash, dep: liquid - cash, bond: (total * w.bond) / 100, equity: (total * w.equity) / 100, sat: (total * w.sat) / 100 };
 }
@@ -189,7 +196,7 @@ function simulate(A, B, years, p, paths = 2000) {
         const e = 0.1 * z1 + Math.sqrt(0.99) * z2;
         const g = Math.exp(lg(p.rGold) + sd(p.vGold) * z1 + (m <= 24 ? premDrag : 0));
         const eq = Math.exp(lg(c.r.equity) + sd(p.vEq) * e);
-        const sat = Math.exp(lg(c.r.sat) + sd(p.vSat) * (0.8 * e + 0.6 * z3));
+        const sat = Math.exp(lg(c.r.sat) + sd(c.v.sat) * (0.8 * e + 0.6 * z3));
         const bd = Math.exp(lg(c.r.bond) + sd(p.vBond) * z4);
         const gr = { gold: g, cash: fixed.cash, dep: m <= 12 ? fixed.dep1 : fixed.dep, bond: bd, equity: eq, sat };
         for (const k of keys) { a[k] *= gr[k]; b[k] *= gr[k]; }
@@ -229,7 +236,7 @@ function renderProfileCards(cur, total, p) {
   const cards = [{ key: "cur", name: "Hiện trạng", mix: cur, base: true }]
     .concat(Object.keys(PROFILES).map((k) => ({ key: k, name: PROFILES[k].name, mix: targetMix(total, k) })));
   for (const c of cards) {
-    const sim = simulate(cur, c.mix, y, p, 600), f = c.base ? sim.A[sim.n] : sim.B[sim.n];
+    const sim = simulate(cur, c.mix, y, c.base ? p : profCfg(c.key), 600), f = c.base ? sim.A[sim.n] : sim.B[sim.n];
     c.stats = [
       [`Trung vị sau ${y} năm`, money(f[1])],
       ["Tăng trưởng/năm", pct(Math.pow(f[1] / total, 1 / y) - 1)],
@@ -284,15 +291,16 @@ function renderPlan(st) {
       <td class="tip">${tip}</td></tr>`;
   });
   $("#planTable").innerHTML = `<tr><th>Lớp tài sản</th><th>Hiện tại</th><th>Mục tiêu</th><th>Cần làm</th><th class="tip">Gợi ý công cụ</th></tr>` + rows.join("");
-  const best = optimal(p.risk, total), c = best.cme, b = bounds(total, p);
+  const c = optimal(p.profile, total).cme;
+  const cons = (k) => { const b = bounds(total, profCfg(k)); return `tiền mặt + tiết kiệm ≥ ${b.liquid[0]}%${b.liquid[0] ? " (quỹ khẩn cấp)" : ""}, vàng ${b.gold[0]}–${b.gold[1]}%, cổ phiếu ≤ ${b.equity[1]}%, vệ tinh ≤ ${b.sat[1]}%`; };
   const frontier = Object.keys(PROFILES).map((k) => { const o = optimal(k, total); return `<b>${PROFILES[k].name}</b> (λ=${PROFILES[k].lambda}): E(R) ${nf(o.er, 2)}%, σ ${nf(o.sd, 1)}%`; }).join(" · ");
   $("#recBox").innerHTML = `<h3 class="sub">Cách tính đề xuất (CFA Level III) <span class="tag">Đề xuất</span></h3>
     <p class="small">Mức chấp nhận rủi ro của tôi:
       <select data-risk class="auto">${Object.entries(PROFILES).map(([k, v]) => `<option value="${k}"${k === p.risk ? " selected" : ""}>${v.name} (λ = ${v.lambda})</option>`).join("")}</select></p>
-    <p class="small"><b>Bước 1 – Kỳ vọng thị trường (CME)</b>, điều chỉnh theo dữ liệu hiện tại, kỳ hạn ${p.horizon} năm:</p>
+    <p class="small"><b>Bước 1 – Kỳ vọng thị trường (CME)</b>, điều chỉnh theo dữ liệu hiện tại, kỳ hạn ${p.horizon} năm (theo khẩu vị đang áp dụng: ${esc(PROFILES[p.profile].name)}):</p>
     <div class="tablewrap"><table class="cme"><tr><th>Lớp</th><th>Lợi nhuận kỳ vọng</th><th>Biến động</th><th class="tip">Cơ sở</th></tr>
       ${OPT_KEYS.map((k) => `<tr><td>${LABEL[k]}</td><td>${nf(c.r[k], 2)}%</td><td>${nf(c.v[k], 1)}%</td><td class="tip">${esc(c.notes[k])}</td></tr>`).join("")}</table></div>
-    <p class="small"><b>Bước 2 – Tối ưu hóa:</b> chọn tỷ trọng làm U = E(R) − ½·λ·σ² lớn nhất (lợi nhuận đã trừ "chi phí" rủi ro theo mức bạn chấp nhận), với ràng buộc: tiền mặt + tiết kiệm ≥ ${b.liquid[0]}% (quỹ khẩn cấp), vàng ${b.gold[0]}–${b.gold[1]}%, cổ phiếu ≤ ${b.equity[1]}%, vệ tinh ≤ ${b.sat[1]}%.</p>
+    <p class="small"><b>Bước 2 – Tối ưu hóa:</b> chọn tỷ trọng làm U = E(R) − ½·λ·σ² lớn nhất (lợi nhuận đã trừ "chi phí" rủi ro theo mức bạn chấp nhận), với ràng buộc theo khẩu vị. ${Object.keys(PROFILES).map((k) => `<b>${PROFILES[k].name}</b>: ${cons(k)}`).join("; ")}.${PROFILES.aggressive ? ` <span class="warn">Tăng trưởng mạnh không giữ quỹ khẩn cấp: khi cần tiền gấp lúc thị trường giảm sẽ phải bán lỗ.</span>` : ""}</p>
     <p class="small"><b>Kết quả:</b> ${frontier}.</p>
     <p class="muted small">CME tính lại tự động khi dữ liệu thị trường (4 lần/ngày) và số liệu vĩ mô VN (hằng tháng) thay đổi, nên đề xuất thay đổi theo. Kết quả nhạy nhất với kỳ vọng cổ phiếu và vàng: chỉnh ở <a href="#strategy" data-focus="assumeForm">Chiến lược › Giả định CME</a>.</p>` +
     (p.profile !== p.risk ? `<p class="advice small">Bạn đang áp dụng khẩu vị <b>${esc(PROFILES[p.profile].name)}</b>, khác với mức rủi ro bạn chọn (${esc(PROFILES[p.risk].name)}). <button type="button" class="ghost" data-apply-rec>Áp dụng đề xuất</button></p>` : "");
@@ -311,9 +319,9 @@ function renderPlan(st) {
   const key = JSON.stringify([cur, tgt, p, P.latest.premium]);
   if (key === simKey) return;
   simKey = key;
-  const sim = simulate(cur, tgt, p.horizon, p);
+  const pp = profCfg(p.profile), sim = simulate(cur, tgt, p.horizon, pp);
   renderCompare(sim, cur, tgt, total, p);
-  const be = breakeven(cur, tgt, p.horizon, p);
+  const be = breakeven(cur, tgt, p.horizon, pp);
   $("#cmpBreakeven").innerHTML = be == null
     ? "Với các giả định này, hiện trạng khó vượt mục tiêu ngay cả khi vàng tăng 40%/năm."
     : `Điểm hòa: vàng thế giới cần tăng khoảng <b>${nf(be, 1)}%/năm</b> (trung vị, đã tính premium SJC co về ${nf(p.premTarget, 0)}%) thì hiện trạng mới bằng mục tiêu sau ${p.horizon} năm. ` +
@@ -358,19 +366,18 @@ function renderBacktest(cur, tgt) {
   };
   const W = BT_WINDOWS.map(([mo, label, key]) => { const w = { mo, label, ...pastReturns(mo, key, p) }; w.c = calc(w); return w; });
 
-  $("#btTable").innerHTML = `<tr><th>Nếu tái cơ cấu từ</th><th>Giá trị lúc đó</th><th>Hiện trạng (hôm nay)</th><th>Mục tiêu (hôm nay)</th><th>Chênh lệch</th></tr>` +
+  $("#btTable").innerHTML = `<tr><th>Nếu tái cơ cấu từ</th><th>Chênh lệch</th><th>Giá trị lúc đó</th><th>Hiện trạng (hôm nay)</th><th>Mục tiêu (hôm nay)</th></tr>` +
     W.map((w) => {
       const lab = `${w.label} trước <span class="muted small">(${fmtDate(w.d0)}${w.est ? ", giá vàng ước tính" : ""})</span>`;
       if (!w.c) return `<tr><td>${lab}</td><td colspan="4" class="muted" style="text-align:center">chưa đủ số liệu</td></tr>`;
       const { V0, B } = w.c, d = B - V;
-      return `<tr><td>${lab}</td><td>${money(V0)}</td><td>${money(V)} <span class="muted small">${pc(V / V0 - 1)}</span></td>
-        <td>${money(B)} <span class="muted small">${pc(B / V0 - 1)}</span></td><td class="${Math.abs(d) < 0.05 ? "muted" : d > 0 ? "up" : "down"}">${signed(d)}</td></tr>`;
+      return `<tr><td>${lab}</td><td class="${Math.abs(d) < 0.05 ? "muted" : d > 0 ? "up" : "down"}">${signed(d)}</td><td>${money(V0)}</td>
+        <td>${money(V)} <span class="muted small">${pc(V / V0 - 1)}</span></td><td>${money(B)} <span class="muted small">${pc(B / V0 - 1)}</span></td></tr>`;
     }).join("");
   const last = [...W].reverse().find((w) => w.c);
   $("#btNote").innerHTML = !last ? "Chưa đủ số liệu thị trường để tính."
     : `Nếu đã tái cơ cấu theo phân bổ chiến lược đang chọn từ ${last.label} trước, danh mục hôm nay sẽ ${last.c.B >= V ? "cao" : "thấp"} hơn hiện trạng khoảng <b>${money(Math.abs(last.c.B - V))}</b>. ` +
       `Kết quả nhìn lại phụ thuộc mạnh vào diễn biến vàng trong giai đoạn đó, nên dùng để hiểu rủi ro tập trung chứ không để đoán tương lai.`;
-  $("#btSum").textContent = last ? `Từ ${last.label} trước: mục tiêu ${signed(last.c.B - V)}` : "";
 
   // Cơ cấu từng lớp cho một mốc
   if (!W.some((w) => w.mo === btWin && w.c)) btWin = last ? last.mo : 12;
