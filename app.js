@@ -590,7 +590,6 @@ function renderAlloc(st) {
   const w = (v) => (inv ? (v / inv) * 100 : 0);
   const rows = CLASSES.map(([k, name, color]) => ({ k, name, color: css(color), v: cur[k], w: w(cur[k]), t: w(tgt[k]) })).filter((r) => r.v >= 0.5 || r.t >= 0.5);
   const maxD = Math.max(5, ...rows.map((r) => Math.abs(r.t - r.w)));
-  $("#allocProfile").textContent = `Mục tiêu theo khẩu vị ${PROFILES[planCfg().profile].name}`;
   $("#allocTable").innerHTML = `<tr><th>Lớp</th><th>Giá trị</th><th>Hiện tại</th><th>Mục tiêu</th><th class="drift">Lệch (điểm %)</th></tr>` +
     rows.map((r) => {
       const d = r.t - r.w, k = d > 0 ? "up" : "down";
@@ -599,10 +598,16 @@ function renderAlloc(st) {
         <td class="drift">${Math.abs(d) < 1 ? '<span class="muted">Khớp</span>' : `<span class="dbar ${k}"><i style="width:${(Math.abs(d) / maxD) * 100}%"></i></span><span class="${k}">${d > 0 ? "+" : "−"}${nf(Math.abs(d), 0)}</span>`}</td></tr>`;
     }).join("") +
     (other > 0 ? `<tr><td><span class="dot" style="background:${css("--muted")}"></span>Tài sản khác</td><td>${money(other)}</td><td colspan="3" class="muted">không tham gia phân bổ</td></tr>` : "");
-  const items = rows.map((r) => [r.name, Math.max(r.v, 0), r.color]).concat(other > 0 ? [["Tài sản khác", other, css("--muted")]] : []);
-  const data = { labels: items.map((x) => x[0]), datasets: [{ data: items.map((x) => x[1]), backgroundColor: items.map((x) => x[2]), borderWidth: 0 }] };
-  if (charts.alloc) { charts.alloc.data = data; charts.alloc.update(); return; }
-  charts.alloc = new Chart($("#chartAlloc"), { type: "doughnut", data, options: { cutout: "68%", plugins: { legend: { display: false } }, maintainAspectRatio: false } });
+  // Hai biểu đồ tròn cùng bảng màu: hiện tại (kể cả tài sản khác) và mục tiêu của khẩu vị đang chọn
+  $("#allocTgtCap").textContent = `Mục tiêu · ${PROFILES[planCfg().profile].name}`;
+  const pie = (key, el, items) => {
+    const data = { labels: items.map((x) => x[0]), datasets: [{ data: items.map((x) => x[1]), backgroundColor: items.map((x) => x[2]), borderWidth: 0 }] };
+    if (charts[key]) { charts[key].data = data; charts[key].update(); return; }
+    charts[key] = new Chart($(el), { type: "doughnut", data, options: { cutout: "68%", plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: (c) => `${c.label}: ${nf((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100, 1)}%` } } }, maintainAspectRatio: false } });
+  };
+  pie("alloc", "#chartAlloc", rows.map((r) => [r.name, Math.max(r.v, 0), r.color]).concat(other > 0 ? [["Tài sản khác", other, css("--muted")]] : []));
+  pie("allocTgt", "#chartAllocTgt", rows.map((r) => [r.name, Math.max(tgt[r.k], 0), r.color]));
 }
 
 function renderCharts(st) {
@@ -622,6 +627,7 @@ function renderCharts(st) {
     ...((S.sec || []).length ? [ds("Chứng khoán & khác", "sec", css("--equity"))] : [])] };
   const fundOpt = structuredClone(base);
   fundOpt.scales.y.stacked = true;
+  fundOpt.scales.y.beginAtZero = true; // vùng xếp chồng: trục bắt đầu từ 0 để lớp dưới cùng (vàng) không bị cắt khi cơ cấu thay đổi
   fundOpt.scales.y.ticks.callback = (v) => money(v);
   fundOpt.plugins.tooltip = { callbacks: { label: (c) => `${c.dataset.label}: ${money(c.parsed.y)}`, footer: (items) => "Tổng: " + money(items.reduce((s, i) => s + i.parsed.y, 0)) + (est[items[0].dataIndex] ? " (giá ước tính)" : "") } };
   if (charts.fund) charts.fund.destroy();

@@ -2,6 +2,12 @@
 
 Phiên bản theo semver: sửa lỗi và điều chỉnh nhỏ → patch, cập nhật lớn → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
 
+## 1.0.7 – 11/11/2026
+
+- Cơ cấu tài sản: thêm biểu đồ tròn Mục tiêu (theo khẩu vị đang chọn) cạnh biểu đồ Hiện tại, cùng bảng màu; rê chuột hiện tỷ trọng %; giãn khoảng cách hai biểu đồ, bỏ dòng "Mục tiêu theo khẩu vị…" (đã có trong nhãn biểu đồ).
+- Diễn biến giá trị danh mục: trục giá trị bắt đầu từ 0 để lớp dưới cùng (vàng) không bị cắt khỏi biểu đồ khi cơ cấu thay đổi.
+- Sửa: trên Safari iPhone, cột Chi tiết trong Lịch sử giao dịch (và các ô có đoạn chữ dài) bị phóng to chữ do tính năng tự điều chỉnh cỡ chữ của Safari; tắt bằng `text-size-adjust: 100%`.
+
 ## 1.0.6 – 10/11/2026
 
 - Tổng quan làm lại: 4 ô chỉ số (NAV kèm biểu đồ nhỏ 3M, Tăng trưởng tổng tài sản, Thu nhập thụ động ước tính hiện tại và khi đạt mục tiêu, Tiến độ giảm tỷ trọng vàng có thanh tiến độ và link lịch bán). Thẻ Cơ cấu tài sản so sánh hiện tại với mục tiêu của khẩu vị đang chọn, cột Lệch (điểm %) có thanh xanh/đỏ; trên điện thoại bảng xuống dưới biểu đồ, ẩn thanh lệch.

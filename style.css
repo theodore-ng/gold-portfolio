@@ -10,6 +10,8 @@
   --shadow: 2px 2px 0 var(--line);
 }
 * { box-sizing: border-box; }
+/* Safari iOS tự phóng to chữ ở ô có đoạn chữ dài (text autosizing) → cỡ chữ trong bảng không đều */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
 h1, h2, h3, .kpi b, .tile b { font-family: var(--serif); font-optical-sizing: auto; }
 h1, h2 { font-weight: 600; }
@@ -218,3 +220,10 @@ details.gvsec[open] > summary { margin-bottom: 10px; }
 .dbar.up i { background: var(--up); } .dbar.down i { background: var(--down); }
 .kpi small b { display: inline; font-family: inherit; font-size: inherit; margin: 0; color: var(--ink); }
 @media (max-width: 820px) { .dbar { display: none; } #allocTable .drift { min-width: 0; } }
+/* Cơ cấu tài sản: hai biểu đồ tròn hiện tại / mục tiêu */
+.donuts { display: flex; gap: 32px; margin: 4px 40px 4px 8px; }
+.donuts figure { margin: 0; }
+.donuts .donut { width: 170px; height: 170px; margin: 0; }
+.donuts figcaption { text-align: center; color: var(--ink); font-size: 13px; font-weight: 600; margin-top: 10px; }
+@media (max-width: 820px) { .donuts { width: 100%; margin: 4px 0 16px; justify-content: space-evenly; gap: 16px; } .donuts .donut { width: 140px; height: 140px; } }
+.kpi small a { white-space: nowrap; }

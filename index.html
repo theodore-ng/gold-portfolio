@@ -7,21 +7,21 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#f2ede2">
 <meta name="color-scheme" content="light">
-<link rel="icon" href="logo.svg?v=1.0.6" type="image/svg+xml">
-<link rel="icon" href="favicon-32.png?v=1.0.6" type="image/png" sizes="32x32">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.0.6">
+<link rel="icon" href="logo.svg?v=1.0.7" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png?v=1.0.7" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.0.7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
-<link rel="stylesheet" href="style.css?v=1.0.6">
+<link rel="stylesheet" href="style.css?v=1.0.7">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=1.0.6"></script>
+<script src="config.js?v=1.0.7"></script>
 </head>
 <body>
 <header>
   <div class="headin">
-    <h1><img class="logo" src="logo.svg?v=1.0.6" alt="">Quản lý tài chính</h1>
+    <h1><img class="logo" src="logo.svg?v=1.0.7" alt="">Quản lý tài chính</h1>
     <div class="row wrap gap">
       <div id="priceStamp"><span class="muted small">Đang tải giá…</span></div>
       <span id="saveState" class="muted small"></span>
@@ -83,9 +83,12 @@
         </section>
 
         <section class="card">
-          <div class="row between"><h2>Cơ cấu tài sản</h2><small class="muted" id="allocProfile"></small></div>
+          <h2>Cơ cấu tài sản</h2>
           <div class="row wrap">
-            <div class="donut"><canvas id="chartAlloc"></canvas></div>
+            <div class="donuts">
+              <figure><div class="donut"><canvas id="chartAlloc"></canvas></div><figcaption>Hiện tại</figcaption></figure>
+              <figure><div class="donut"><canvas id="chartAllocTgt"></canvas></div><figcaption id="allocTgtCap">Mục tiêu</figcaption></figure>
+            </div>
             <div class="tablewrap allocwrap"><table id="allocTable" class="wrapfirst"></table></div>
           </div>
         </section>
@@ -484,10 +487,10 @@
     </div>
   </div>
 </main>
-<script src="plan.js?v=1.0.6"></script>
-<script src="macro.js?v=1.0.6"></script>
-<script src="invest.js?v=1.0.6"></script>
-<script src="app.js?v=1.0.6"></script>
-<script src="tabs.js?v=1.0.6"></script>
+<script src="plan.js?v=1.0.7"></script>
+<script src="macro.js?v=1.0.7"></script>
+<script src="invest.js?v=1.0.7"></script>
+<script src="app.js?v=1.0.7"></script>
+<script src="tabs.js?v=1.0.7"></script>
 </body>
 </html>
