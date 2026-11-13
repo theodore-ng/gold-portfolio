@@ -201,6 +201,21 @@ function valueOn(d) {
   return { gold: goldValue(st.lots, p), cash: st.cash, dep: st.depVal, sec: m.bond + m.equity + m.sat + m.other, est: !!p.est };
 }
 
+/** Thay đổi NAV so với phiên trước, tách theo nguyên nhân: phần do giá (vàng = số lượng giữ ở phiên trước × chênh giá mua;
+    tiết kiệm = lãi cộng thêm), phần còn lại = giao dịch trong ngày (bán/mua, nạp/rút) và chứng khoán (chưa có giá phiên trước). */
+function dayDrivers(prevDate, d, dayD) {
+  const sp = derive(prevDate), Lp = priceOn(prevDate), L = P.latest, out = [];
+  let goldD = 0, qty = 0;
+  for (const l of sp.lots) if (l.rem > 1e-9) { goldD += l.rem * (goldPx(l, L) - goldPx(l, Lp)); qty += l.rem; }
+  const px = L.sjc_buy - Lp.sjc_buy;
+  if (Math.abs(goldD) >= 0.05) out.push({ name: "Vàng", v: goldD, why: `giá mua SJC ${px >= 0 ? "+" : "−"}${nf(Math.abs(px), 1)} tr/lượng × ${nf(qty, 2)} lượng` });
+  const depD = sp.deps.filter((x) => !x.closed).reduce((s, x) => s + depValue(x, d) - depValue(x, prevDate), 0);
+  if (Math.abs(depD) >= 0.05) out.push({ name: "Lãi tiết kiệm", v: depD });
+  const rest = dayD - goldD - depD;
+  if (Math.abs(rest) >= 0.05) out.push({ name: "Giao dịch & khác", v: rest, why: "bán/mua, nạp/rút trong ngày" });
+  return out.sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+}
+
 /* ---------- lộ trình ---------- */
 function glide(st) {
   const g = S.settings, L = P.latest, prem = L.premium ?? 0, xau = L.xau ?? 0;
@@ -282,6 +297,8 @@ function render() {
   const dayD = total - prevTotal, dayTxt = `${chg(dayD, `${money(Math.abs(dayD))} (${pct(prevTotal ? total / prevTotal - 1 : 0)})`)} so với ${fmtDate(prevDate)}`;
   $("#kTotal").textContent = money(total);
   $("#kDay").innerHTML = dayTxt;
+  const drv = dayDrivers(prevDate, d, dayD);
+  $("#kDayWhy").innerHTML = drv.length ? "Do: " + drv.map((x) => `${x.name} ${chg(x.v, money(Math.abs(x.v)))}${x.why ? ` <span class="muted">(${x.why})</span>` : ""}`).join(" · ") : "";
   $("#fundDay").innerHTML = `Giá trị hôm nay <b>${money(total)}</b> ${dayTxt}`;
   const ng = navGrowth(L, d, total);
   const base = ng ? `${money(ng.nav0)} ngày ${fmtDate(ng.t0)} → ${money(ng.navNow)} hôm nay${Math.abs(ng.contrib) >= 1 ? ` · đã loại nạp/rút ròng ${signed(ng.contrib)}` : ""}` : "";

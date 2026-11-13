@@ -2,6 +2,11 @@
 
 Phiên bản theo semver: sửa lỗi và điều chỉnh nhỏ → patch, cập nhật lớn → minor, đổi cấu trúc tab hoặc mô hình dữ liệu → major. Số phiên bản là tham số `?v=` trong `index.html`.
 
+## 1.0.8 – 13/11/2026
+
+- Tổng quan, ô NAV: dòng "Do:" tách thay đổi so với phiên trước theo nguyên nhân: vàng (giá mua SJC × số lượng giữ), lãi tiết kiệm, giao dịch & khác (bán/mua, nạp/rút trong ngày).
+- Thị trường: nút "Cập nhật & phân tích lại" tải lại dữ liệu mới nhất (máy chủ cập nhật 4 lần/ngày, giá SJC trực tiếp) và tính lại mọi phân tích, kèm thời điểm của dữ liệu.
+
 ## 1.0.7 – 11/11/2026
 
 - Cơ cấu tài sản: thêm biểu đồ tròn Mục tiêu (theo khẩu vị đang chọn) cạnh biểu đồ Hiện tại, cùng bảng màu; rê chuột hiện tỷ trọng %; giãn khoảng cách hai biểu đồ, bỏ dòng "Mục tiêu theo khẩu vị…" (đã có trong nhãn biểu đồ).

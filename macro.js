@@ -247,9 +247,25 @@ function renderNews() {
 
 function renderMacroStatic() {
   renderVN(); renderFlows(); renderRecession(); renderCycle(); renderOutlook(); renderNews();
+  const t = (x) => (x ? new Date(x).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—");
+  $("#mktStamp").textContent = `Dữ liệu: thị trường ${t(M?.updated)} · tin tức ${t(NEWS?.updated)} · giá vàng ${t(P?.updated)}${livePNJ ? " (SJC trực tiếp)" : ""}`;
   $("#macroStamp").textContent = M ? `Thị trường cập nhật ${new Date(M.updated).toLocaleString("vi-VN")} · Nguồn: Yahoo Finance, FRED, World Bank, Cục Thống kê` : "";
 }
+/** Tải lại dữ liệu mới nhất (máy chủ cập nhật 4 lần/ngày, giá SJC trực tiếp từ PNJ) và tính lại mọi phân tích. */
+async function refreshMarket() {
+  const b = $("#mktRefresh");
+  b.disabled = true; b.textContent = "Đang cập nhật…";
+  try {
+    await Promise.all([loadPrices(), loadMacro()]);
+    goldVNKey = null; simKey = ""; profileCardKey = ""; // buộc tính lại cả khi dữ liệu không đổi
+    renderMacroStatic(); render();
+    b.textContent = "✓ Đã cập nhật";
+  } catch (e) { b.textContent = "Lỗi, thử lại"; console.error(e); }
+  setTimeout(() => { b.disabled = false; b.textContent = "↻ Cập nhật & phân tích lại"; }, 2500);
+}
+
 function bindMacro() {
+  $("#mktRefresh").onclick = refreshMarket;
   document.addEventListener("click", (e) => {
     const t = e.target.closest("#newsHot button, #newsSrc button, #newsMore");
     if (!t) return;
